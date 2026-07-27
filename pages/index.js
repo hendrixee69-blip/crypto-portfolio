@@ -41,8 +41,6 @@ export default function Home() {
 
   return (
     <>
-      <div className="bg-glow"><span className="orb-3" /></div>
-
       <div className="ticker-wrap">
         <div className="ticker-track">
           {[...COINS, ...COINS].map((c, i) => {
@@ -68,7 +66,7 @@ export default function Home() {
           <div className="brand"><span className="dot" /> Ledger</div>
           <div style={{ display: 'flex', gap: 10 }}>
             <a className="nav-link" href="/login">Sign in</a>
-            <a className="nav-link" href="/admin/login">Admin</a>
+            <a className="nav-link primary" href="/admin/login">Admin</a>
           </div>
         </div>
 

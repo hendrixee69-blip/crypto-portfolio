@@ -30,7 +30,6 @@ export default function Login() {
 
   return (
     <>
-      <div className="bg-glow" />
       <div className="auth-shell">
         <div className="auth-card card">
           <div className="eyebrow">Account</div>

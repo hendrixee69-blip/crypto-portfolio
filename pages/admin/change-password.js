@@ -51,7 +51,6 @@ export default function ChangePassword({ adminUsername }) {
 
   return (
     <>
-      <div className="bg-glow" />
       <div className="container">
       <div className="header">
         <div className="brand"><span className="dot" /> Ledger <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· admin</span></div>

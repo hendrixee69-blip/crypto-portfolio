@@ -58,7 +58,6 @@ export default function Dashboard({ username }) {
 
   return (
     <>
-      <div className="bg-glow" />
       <div className="container">
       <div className="header">
         <div className="brand"><span className="dot" /> Ledger</div>
