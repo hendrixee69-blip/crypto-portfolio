@@ -86,6 +86,25 @@ export default function Home() {
           </div>
         </div>
 
+        <div className="quick-actions">
+          <a href="/login" className="quick-action">
+            <span className="icon-circle">↓</span>
+            View
+          </a>
+          <a href="/login" className="quick-action">
+            <span className="icon-circle">↑</span>
+            Withdraw
+          </a>
+          <a href="/admin/login" className="quick-action">
+            <span className="icon-circle">＋</span>
+            Admin
+          </a>
+          <a href="#prices" className="quick-action">
+            <span className="icon-circle">≡</span>
+            Markets
+          </a>
+        </div>
+
         <div className="stat-strip">
           <div className="glass-card stat-tile">
             <span className="num">{COINS.length}</span>
@@ -101,7 +120,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="glass-card">
+        <div className="glass-card" id="prices">
           <div className="eyebrow">Live market</div>
           <h2 style={{ marginBottom: 4 }}>Prices right now</h2>
           <p className="muted" style={{ marginBottom: 20 }}>No account needed to view. Sign in to see your own holdings.</p>

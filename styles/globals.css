@@ -42,9 +42,9 @@ button {
 }
 
 .container {
-  max-width: 1000px;
+  max-width: 640px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 18px;
 }
 
 /* --- Ticker strip: a running price tape across the top, Coinbase-style --- */
@@ -87,7 +87,7 @@ button {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 22px 0;
+  padding: 14px 0;
 }
 .brand {
   font-family: var(--font-display);
@@ -122,10 +122,10 @@ button {
   background: var(--surface);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
-  border-radius: 16px;
-  padding: 24px;
+  border-radius: 12px;
+  padding: 16px;
 }
-.card + .card { margin-top: 16px; }
+.card + .card { margin-top: 10px; }
 
 h1, h2, h3 {
   font-family: var(--font-display);
@@ -148,11 +148,11 @@ h1, h2, h3 {
 table { width: 100%; border-collapse: collapse; }
 th, td {
   text-align: left;
-  padding: 14px 8px;
+  padding: 9px 6px;
   border-bottom: 1px solid var(--border);
-  font-size: 14px;
+  font-size: 13px;
 }
-th { color: var(--text-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+th { color: var(--text-muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
 tr:last-child td { border-bottom: none; }
 tbody tr:hover { background: var(--bg-soft); }
 
@@ -187,8 +187,8 @@ tbody tr:hover { background: var(--bg-soft); }
   justify-content: center;
   gap: 6px;
   border-radius: 100px;
-  padding: 11px 20px;
-  font-size: 14px;
+  padding: 9px 16px;
+  font-size: 13px;
   font-weight: 700;
   border: 1px solid transparent;
 }
@@ -236,7 +236,7 @@ tbody tr:hover { background: var(--bg-soft); }
 
 /* --- Homepage hero, Coinbase-style: light bg, big navy headline, blue CTA --- */
 .hero {
-  padding: 64px 0 48px;
+  padding: 32px 0 24px;
   text-align: center;
 }
 .hero-badge {
@@ -244,13 +244,13 @@ tbody tr:hover { background: var(--bg-soft); }
   align-items: center;
   gap: 8px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--green);
   background: var(--green-soft);
-  padding: 6px 14px;
+  padding: 5px 12px;
   border-radius: 100px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 .hero-badge .pulse {
   width: 6px;
@@ -269,19 +269,19 @@ tbody tr:hover { background: var(--bg-soft); }
   .hero-badge .pulse { animation: none; }
 }
 .hero h1 {
-  font-size: clamp(36px, 5.5vw, 60px);
-  line-height: 1.05;
-  margin: 0 0 20px;
+  font-size: clamp(26px, 4vw, 40px);
+  line-height: 1.1;
+  margin: 0 0 12px;
   letter-spacing: -0.02em;
   color: var(--text);
 }
 .hero .gradient-text { color: var(--accent); }
 .hero p.lede {
   color: var(--text-muted);
-  font-size: 18px;
-  max-width: 540px;
-  margin: 0 auto 32px;
-  line-height: 1.6;
+  font-size: 15px;
+  max-width: 480px;
+  margin: 0 auto 20px;
+  line-height: 1.5;
 }
 .hero-actions {
   display: flex;
@@ -290,8 +290,8 @@ tbody tr:hover { background: var(--bg-soft); }
   flex-wrap: wrap;
 }
 .btn-lg {
-  padding: 14px 28px;
-  font-size: 16px;
+  padding: 11px 22px;
+  font-size: 14px;
 }
 .btn-gradient {
   background: var(--accent);
@@ -306,57 +306,91 @@ tbody tr:hover { background: var(--bg-soft); }
   background: var(--surface);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-md);
-  border-radius: 16px;
-  padding: 26px;
+  border-radius: 14px;
+  padding: 16px;
 }
-.glass-card + .glass-card { margin-top: 16px; }
+.glass-card + .glass-card { margin-top: 10px; }
 
 /* --- Coin logo + row polish --- */
 .coin-cell {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 9px;
 }
 .coin-logo {
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: var(--surface-raised);
   flex-shrink: 0;
 }
 .coin-rank {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-muted);
-  width: 22px;
+  width: 16px;
   text-align: right;
   flex-shrink: 0;
 }
 .stat-strip {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin: 40px 0 36px;
+  gap: 10px;
+  margin: 20px 0 20px;
 }
 .stat-tile {
   text-align: center;
-  padding: 20px 12px;
+  padding: 12px 8px;
 }
 .stat-tile .num {
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 700;
   display: block;
   color: var(--text);
 }
 .stat-tile .label {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin-top: 4px;
+  margin-top: 2px;
+}
+
+/* --- Quick actions row: compact icon-over-label buttons, app-style --- */
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 0 0 20px;
+}
+.quick-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.quick-action:hover { border-color: var(--accent); }
+.quick-action .icon-circle {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
 }
 
 @media (max-width: 640px) {
-  .stat-strip { grid-template-columns: 1fr; }
+  .stat-strip { grid-template-columns: repeat(3, 1fr); }
 }
