@@ -105,6 +105,28 @@ export default function Home() {
           </a>
         </div>
 
+        <div className="promo-banner">
+          <div>
+            <div className="promo-banner-tag">★ Ledger Plus</div>
+            <h3>Track unlimited assets, zero clutter.</h3>
+            <p>Get a personal dashboard, live alerts, and priority support with your account.</p>
+          </div>
+          <a href="/login" className="btn btn-promo">Get started</a>
+        </div>
+
+        <div className="promo-strip">
+          <div className="promo-mini">
+            <div className="mini-label">New</div>
+            <h4>Real-time portfolio sync</h4>
+            <p>Your balance updates instantly whenever a deposit or withdrawal is recorded.</p>
+          </div>
+          <div className="promo-mini alt">
+            <div className="mini-label">Secure</div>
+            <h4>Every entry logged</h4>
+            <p>Full history of every transaction, timestamped and attributed.</p>
+          </div>
+        </div>
+
         <div className="stat-strip">
           <div className="glass-card stat-tile">
             <span className="num">{COINS.length}</span>

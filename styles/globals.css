@@ -394,3 +394,99 @@ tbody tr:hover { background: var(--bg-soft); }
 @media (max-width: 640px) {
   .stat-strip { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* --- Promo banners: dark, bold, Coinbase-style marketing cards --- */
+.promo-banner {
+  background: linear-gradient(135deg, #0A0B0D 0%, #14163A 100%);
+  border-radius: 16px;
+  padding: 22px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 16px;
+  overflow: hidden;
+  position: relative;
+}
+.promo-banner::after {
+  content: '';
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--accent), transparent 70%);
+  opacity: 0.25;
+  right: -60px;
+  top: -60px;
+}
+.promo-banner-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+.promo-banner h3 {
+  color: #fff;
+  font-size: 18px;
+  margin: 0 0 4px;
+}
+.promo-banner p {
+  color: rgba(255,255,255,0.7);
+  font-size: 13px;
+  margin: 0;
+  max-width: 320px;
+}
+.promo-banner .btn-promo {
+  background: #fff;
+  color: #0A0B0D;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.promo-banner .btn-promo:hover { background: #EAEAEA; }
+
+.promo-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 0 0 16px;
+}
+.promo-mini {
+  background: var(--accent-soft);
+  border-radius: 14px;
+  padding: 16px;
+}
+.promo-mini.alt { background: var(--green-soft); }
+.promo-mini .mini-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+.promo-mini.alt .mini-label { color: var(--green); }
+.promo-mini h4 {
+  font-family: var(--font-display);
+  font-size: 15px;
+  margin: 0 0 4px;
+  color: var(--text);
+}
+.promo-mini p {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+@media (max-width: 520px) {
+  .promo-banner { flex-direction: column; text-align: center; }
+  .promo-banner p { max-width: none; }
+  .promo-strip { grid-template-columns: 1fr; }
+}
