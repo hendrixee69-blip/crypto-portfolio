@@ -66,7 +66,6 @@ export default function Home() {
           <div className="brand"><span className="dot" /> Ledger</div>
           <div style={{ display: 'flex', gap: 10 }}>
             <a className="nav-link" href="/login">Sign in</a>
-            <a className="nav-link primary" href="/admin/login">Admin</a>
           </div>
         </div>
 
@@ -82,11 +81,10 @@ export default function Home() {
           </p>
           <div className="hero-actions">
             <a href="/login" className="btn btn-lg btn-gradient">View my portfolio</a>
-            <a href="/admin/login" className="btn btn-lg btn-ghost">Admin sign in</a>
           </div>
         </div>
 
-        <div className="quick-actions">
+        <div className="quick-actions" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
           <a href="/login" className="quick-action">
             <span className="icon-circle">↓</span>
             View
@@ -94,10 +92,6 @@ export default function Home() {
           <a href="/login" className="quick-action">
             <span className="icon-circle">↑</span>
             Withdraw
-          </a>
-          <a href="/admin/login" className="quick-action">
-            <span className="icon-circle">＋</span>
-            Admin
           </a>
           <a href="#prices" className="quick-action">
             <span className="icon-circle">≡</span>
