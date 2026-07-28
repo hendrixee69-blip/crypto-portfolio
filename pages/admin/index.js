@@ -21,6 +21,10 @@ export default function AdminPanel({ adminUsername }) {
 
   const [newUser, setNewUser] = useState({ username: '', password: '', display_name: '' });
   const [entry, setEntry] = useState({ type: 'deposit', coin: 'BTC', amount: '', note: '' });
+  const [btcAddress, setBtcAddress] = useState('');
+  const [btcInput, setBtcInput] = useState('');
+  const [settingsBusy, setSettingsBusy] = useState(false);
+  const [settingsMsg, setSettingsMsg] = useState('');
 
   async function loadUsers() {
     const res = await fetch('/api/admin/users');
@@ -29,7 +33,36 @@ export default function AdminPanel({ adminUsername }) {
     setUsers(data.users || []);
   }
 
-  useEffect(() => { loadUsers(); }, []);
+  async function loadSettings() {
+    const res = await fetch('/api/admin/settings');
+    if (res.status === 401) return;
+    const data = await res.json();
+    setBtcAddress(data.btc_deposit_address || '');
+    setBtcInput(data.btc_deposit_address || '');
+  }
+
+  useEffect(() => { loadUsers(); loadSettings(); }, []);
+
+  async function saveBtcAddress(e) {
+    e.preventDefault();
+    setSettingsMsg('');
+    setSettingsBusy(true);
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ btc_deposit_address: btcInput }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setBtcAddress(btcInput);
+      setSettingsMsg('Deposit address updated.');
+    } catch (err) {
+      setSettingsMsg(err.message);
+    } finally {
+      setSettingsBusy(false);
+    }
+  }
 
   async function loadLedger(userId) {
     setSelectedId(userId);
@@ -123,6 +156,34 @@ export default function AdminPanel({ adminUsername }) {
           </div>
           <button className="btn btn-primary" disabled={busy}>Add user</button>
         </form>
+      </div>
+
+      <div className="card">
+        <h3>Deposit address</h3>
+        <p className="muted" style={{ marginBottom: 12 }}>
+          Shown to signed-in users so they know where to send BTC. You still credit their
+          balance manually in the ledger once you've confirmed the transfer on-chain.
+        </p>
+        <form onSubmit={saveBtcAddress} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'end' }}>
+          <div className="field" style={{ margin: 0 }}>
+            <label>BTC address</label>
+            <input
+              value={btcInput}
+              onChange={(e) => setBtcInput(e.target.value)}
+              placeholder="bc1q..."
+              required
+            />
+          </div>
+          <button className="btn btn-primary" disabled={settingsBusy}>Save</button>
+        </form>
+        {settingsMsg && (
+          <p style={{ fontSize: 13, marginTop: 8, color: settingsMsg.includes('updated') ? 'var(--green)' : 'var(--red)' }}>
+            {settingsMsg}
+          </p>
+        )}
+        {btcAddress && (
+          <p className="muted num" style={{ fontSize: 12, marginTop: 8 }}>Currently live: {btcAddress}</p>
+        )}
       </div>
 
       <div className="card" style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: 24 }}>

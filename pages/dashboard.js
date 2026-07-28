@@ -23,23 +23,38 @@ export default function Dashboard({ username }) {
   const [portfolio, setPortfolio] = useState(null);
   const [prices, setPrices] = useState(null);
   const [error, setError] = useState('');
+  const [depositAddress, setDepositAddress] = useState(null);
+  const [showDeposit, setShowDeposit] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     async function load() {
       try {
-        const [pRes, priceRes] = await Promise.all([
+        const [pRes, priceRes, settingsRes] = await Promise.all([
           fetch('/api/portfolio'),
           fetch('/api/prices'),
+          fetch('/api/settings'),
         ]);
         if (!pRes.ok) throw new Error('Could not load your portfolio');
         setPortfolio(await pRes.json());
         setPrices(await priceRes.json());
+        if (settingsRes.ok) {
+          const s = await settingsRes.json();
+          setDepositAddress(s.btc_deposit_address);
+        }
       } catch (err) {
         setError(err.message);
       }
     }
     load();
   }, []);
+
+  function copyAddress() {
+    if (!depositAddress) return;
+    navigator.clipboard.writeText(depositAddress);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   async function logout() {
     await fetch('/api/auth/logout', {
@@ -76,6 +91,31 @@ export default function Dashboard({ username }) {
             ? totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
             : '—'}
         </h1>
+        {depositAddress && (
+          <button
+            className="btn btn-primary"
+            style={{ marginTop: 12 }}
+            onClick={() => setShowDeposit((v) => !v)}
+          >
+            {showDeposit ? 'Hide deposit address' : 'Deposit BTC'}
+          </button>
+        )}
+        {showDeposit && depositAddress && (
+          <div style={{ marginTop: 14, padding: 14, background: 'var(--bg-soft)', borderRadius: 10 }}>
+            <p className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
+              Send BTC to this address only. Your balance is updated manually once the
+              deposit is confirmed — this can take some time, it isn't automatic.
+            </p>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <code className="num" style={{ fontSize: 12, wordBreak: 'break-all', flex: 1 }}>
+                {depositAddress}
+              </code>
+              <button className="btn btn-ghost" style={{ flexShrink: 0 }} onClick={copyAddress}>
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="card">
