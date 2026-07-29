@@ -29,7 +29,9 @@ export default function Dashboard({ username }) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    async function load() {
+    let cancelled = false;
+
+    async function loadAll() {
       try {
         const [pRes, priceRes, settingsRes] = await Promise.all([
           fetch('/api/portfolio'),
@@ -37,17 +39,34 @@ export default function Dashboard({ username }) {
           fetch('/api/settings'),
         ]);
         if (!pRes.ok) throw new Error('Could not load your portfolio');
+        if (cancelled) return;
         setPortfolio(await pRes.json());
         setPrices(await priceRes.json());
         if (settingsRes.ok) {
           const s = await settingsRes.json();
-          setAddresses(s.addresses || {});
+          if (!cancelled) setAddresses(s.addresses || {});
         }
       } catch (err) {
-        setError(err.message);
+        if (!cancelled) setError(err.message);
       }
     }
-    load();
+
+    // Prices alone, on a timer — holdings and the deposit address list rarely
+    // change mid-session, so there's no need to re-fetch those every 30s too.
+    async function refreshPricesOnly() {
+      try {
+        const res = await fetch('/api/prices');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setPrices(data);
+      } catch {
+        // Silent — a missed price refresh isn't worth surfacing an error for.
+      }
+    }
+
+    loadAll();
+    const interval = setInterval(refreshPricesOnly, 30_000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
   function openDeposit() {
@@ -121,7 +140,12 @@ export default function Dashboard({ username }) {
       {error && <p className="error-text">{error}</p>}
 
       <div className="card">
-        <div className="eyebrow">Portfolio value</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <div className="eyebrow" style={{ margin: 0 }}>Portfolio value</div>
+          <span className="hero-badge" style={{ margin: 0, padding: '3px 9px', fontSize: 10 }}>
+            <span className="pulse" /> Live
+          </span>
+        </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
           <h1 className="num" style={{ margin: 0 }}>
             {totalValue !== undefined
