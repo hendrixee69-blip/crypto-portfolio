@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { requireRole } from '../lib/auth';
-import { BY_SYMBOL } from '../lib/coins';
+import { COINS, BY_SYMBOL } from '../lib/coins';
 
 export async function getServerSideProps({ req }) {
   const session = requireRole(req, 'user');
@@ -93,6 +93,20 @@ export default function Dashboard({ username }) {
     return sum + Number(h.balance) * price;
   }, 0);
 
+  // Weighted 24h change across whatever the user actually holds, so the
+  // number reflects their real exposure rather than the market in general.
+  const portfolioChangePct = (() => {
+    if (!portfolio?.holdings?.length || !prices || !totalValue) return null;
+    const weightedChange = portfolio.holdings.reduce((sum, h) => {
+      const coin = BY_SYMBOL[h.coin];
+      const p = prices?.[coin?.id];
+      if (!p?.usd) return sum;
+      const value = Number(h.balance) * p.usd;
+      return sum + value * (p.usd_24h_change || 0);
+    }, 0);
+    return weightedChange / totalValue;
+  })();
+
   return (
     <>
       <div className="container">
@@ -108,11 +122,25 @@ export default function Dashboard({ username }) {
 
       <div className="card">
         <div className="eyebrow">Portfolio value</div>
-        <h1 className="num">
-          {totalValue !== undefined
-            ? totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-            : '—'}
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+          <h1 className="num" style={{ margin: 0 }}>
+            {totalValue !== undefined
+              ? totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+              : '—'}
+          </h1>
+          {portfolioChangePct !== null && (
+            <span
+              className="num"
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: portfolioChangePct >= 0 ? 'var(--green)' : 'var(--red)',
+              }}
+            >
+              {portfolioChangePct >= 0 ? '▲' : '▼'} {Math.abs(portfolioChangePct).toFixed(2)}% today
+            </span>
+          )}
+        </div>
 
         {depositStep === 'closed' && Object.keys(addresses).length > 0 && (
           <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={openDeposit}>
@@ -158,6 +186,37 @@ export default function Dashboard({ username }) {
             </div>
           </div>
         )}
+      </div>
+
+      <div className="card">
+        <h3>Markets</h3>
+        <p className="muted" style={{ marginBottom: 4 }}>Live prices, updates automatically.</p>
+        <table>
+          <tbody>
+            {COINS.map((c) => {
+              const p = prices?.[c.id];
+              const change = p?.usd_24h_change;
+              return (
+                <tr key={c.symbol}>
+                  <td style={{ width: '45%' }}>
+                    <div className="coin-cell">
+                      {p?.image ? (
+                        <img src={p.image} alt={c.name} className="coin-logo" />
+                      ) : (
+                        <span className="coin-logo" />
+                      )}
+                      <span><strong>{c.symbol}</strong> <span className="muted">{c.name}</span></span>
+                    </div>
+                  </td>
+                  <td className="num">{fmtPrice(p?.usd)}</td>
+                  <td className="num" style={{ color: change >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                    {change !== undefined ? `${change >= 0 ? '+' : ''}${change.toFixed(2)}%` : '—'}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
       <div className="card">
