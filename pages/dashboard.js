@@ -102,10 +102,6 @@ export default function Dashboard({ username }) {
         )}
         {showDeposit && depositAddress && (
           <div style={{ marginTop: 14, padding: 14, background: 'var(--bg-soft)', borderRadius: 10 }}>
-            <p className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
-              Send BTC to this address only. Your balance is updated manually once the
-              deposit is confirmed — this can take some time, it isn't automatic.
-            </p>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <code className="num" style={{ fontSize: 12, wordBreak: 'break-all', flex: 1 }}>
                 {depositAddress}
