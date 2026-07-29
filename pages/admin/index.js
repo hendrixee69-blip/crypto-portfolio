@@ -21,8 +21,8 @@ export default function AdminPanel({ adminUsername }) {
 
   const [newUser, setNewUser] = useState({ username: '', password: '', display_name: '' });
   const [entry, setEntry] = useState({ type: 'deposit', coin: 'BTC', amount: '', note: '' });
-  const [btcAddress, setBtcAddress] = useState('');
-  const [btcInput, setBtcInput] = useState('');
+  const [addresses, setAddresses] = useState({});
+  const [addrForm, setAddrForm] = useState({ coin: 'BTC', address: '' });
   const [settingsBusy, setSettingsBusy] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState('');
 
@@ -37,13 +37,12 @@ export default function AdminPanel({ adminUsername }) {
     const res = await fetch('/api/admin/settings');
     if (res.status === 401) return;
     const data = await res.json();
-    setBtcAddress(data.btc_deposit_address || '');
-    setBtcInput(data.btc_deposit_address || '');
+    setAddresses(data.addresses || {});
   }
 
   useEffect(() => { loadUsers(); loadSettings(); }, []);
 
-  async function saveBtcAddress(e) {
+  async function saveAddress(e) {
     e.preventDefault();
     setSettingsMsg('');
     setSettingsBusy(true);
@@ -51,12 +50,13 @@ export default function AdminPanel({ adminUsername }) {
       const res = await fetch('/api/admin/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ btc_deposit_address: btcInput }),
+        body: JSON.stringify(addrForm),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setBtcAddress(btcInput);
-      setSettingsMsg('Deposit address updated.');
+      setAddresses((prev) => ({ ...prev, [addrForm.coin]: addrForm.address.trim() }));
+      setAddrForm({ coin: addrForm.coin, address: '' });
+      setSettingsMsg('Address updated.');
     } catch (err) {
       setSettingsMsg(err.message);
     } finally {
@@ -159,30 +159,46 @@ export default function AdminPanel({ adminUsername }) {
       </div>
 
       <div className="card">
-        <h3>Deposit address</h3>
+        <h3>Deposit addresses</h3>
         <p className="muted" style={{ marginBottom: 12 }}>
-          Shown to signed-in users so they know where to send BTC. You still credit their
-          balance manually in the ledger once you've confirmed the transfer on-chain.
+          Set an address per coin. Users see only the coins you've configured here —
+          you still credit balances manually once you've confirmed a transfer on-chain.
         </p>
-        <form onSubmit={saveBtcAddress} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'end' }}>
+        <form onSubmit={saveAddress} style={{ display: 'grid', gridTemplateColumns: '110px 1fr auto', gap: 12, alignItems: 'end', marginBottom: 14 }}>
           <div className="field" style={{ margin: 0 }}>
-            <label>BTC address</label>
+            <label>Coin</label>
+            <select value={addrForm.coin} onChange={(e) => setAddrForm({ ...addrForm, coin: e.target.value })}>
+              {COINS.map((c) => <option key={c.symbol} value={c.symbol}>{c.symbol}</option>)}
+            </select>
+          </div>
+          <div className="field" style={{ margin: 0 }}>
+            <label>Address</label>
             <input
-              value={btcInput}
-              onChange={(e) => setBtcInput(e.target.value)}
-              placeholder="bc1q..."
+              value={addrForm.address}
+              onChange={(e) => setAddrForm({ ...addrForm, address: e.target.value })}
+              placeholder={addresses[addrForm.coin] || 'Not set yet'}
               required
             />
           </div>
           <button className="btn btn-primary" disabled={settingsBusy}>Save</button>
         </form>
         {settingsMsg && (
-          <p style={{ fontSize: 13, marginTop: 8, color: settingsMsg.includes('updated') ? 'var(--green)' : 'var(--red)' }}>
+          <p style={{ fontSize: 13, marginBottom: 10, color: settingsMsg.includes('updated') ? 'var(--green)' : 'var(--red)' }}>
             {settingsMsg}
           </p>
         )}
-        {btcAddress && (
-          <p className="muted num" style={{ fontSize: 12, marginTop: 8 }}>Currently live: {btcAddress}</p>
+        {Object.keys(addresses).length > 0 && (
+          <table>
+            <thead><tr><th>Coin</th><th>Address</th></tr></thead>
+            <tbody>
+              {Object.entries(addresses).map(([coin, addr]) => (
+                <tr key={coin}>
+                  <td><strong>{coin}</strong></td>
+                  <td className="num muted" style={{ fontSize: 12 }}>{addr}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
 

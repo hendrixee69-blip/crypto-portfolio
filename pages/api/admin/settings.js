@@ -1,31 +1,38 @@
 const { pool } = require('../../../lib/db');
 const { requireRole } = require('../../../lib/auth');
+const { BY_SYMBOL } = require('../../../lib/coins');
 
 module.exports = async function handler(req, res) {
   const session = requireRole(req, 'admin');
   if (!session) return res.status(401).json({ error: 'Not authenticated' });
 
   if (req.method === 'GET') {
-    const { rows } = await pool.query("SELECT value FROM settings WHERE key = 'btc_deposit_address'");
-    return res.status(200).json({ btc_deposit_address: rows[0]?.value || null });
+    const { rows } = await pool.query("SELECT key, value FROM settings WHERE key LIKE 'deposit_address_%'");
+    const addresses = {};
+    rows.forEach((r) => {
+      const coin = r.key.replace('deposit_address_', '');
+      addresses[coin] = r.value;
+    });
+    return res.status(200).json({ addresses });
   }
 
   if (req.method === 'POST') {
-    const { btc_deposit_address } = req.body || {};
-    if (typeof btc_deposit_address !== 'string' || !btc_deposit_address.trim()) {
-      return res.status(400).json({ error: 'A valid BTC address is required' });
+    const { coin, address } = req.body || {};
+    if (!coin || !BY_SYMBOL[coin]) {
+      return res.status(400).json({ error: `Unknown coin symbol: ${coin}` });
     }
-    // Loose sanity check only — real address validation (checksums per address
-    // type) is out of scope here. This just catches obvious typos/garbage.
-    const addr = btc_deposit_address.trim();
-    if (addr.length < 26 || addr.length > 90) {
-      return res.status(400).json({ error: 'That doesn\'t look like a valid BTC address' });
+    if (typeof address !== 'string' || !address.trim()) {
+      return res.status(400).json({ error: 'A valid address is required' });
+    }
+    const trimmed = address.trim();
+    if (trimmed.length < 20 || trimmed.length > 90) {
+      return res.status(400).json({ error: 'That doesn\'t look like a valid address' });
     }
 
     await pool.query(
-      `INSERT INTO settings (key, value) VALUES ('btc_deposit_address', $1)
+      `INSERT INTO settings (key, value) VALUES ($1, $2)
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
-      [addr]
+      [`deposit_address_${coin}`, trimmed]
     );
     return res.status(200).json({ ok: true });
   }

@@ -23,8 +23,9 @@ export default function Dashboard({ username }) {
   const [portfolio, setPortfolio] = useState(null);
   const [prices, setPrices] = useState(null);
   const [error, setError] = useState('');
-  const [depositAddress, setDepositAddress] = useState(null);
-  const [showDeposit, setShowDeposit] = useState(false);
+  const [addresses, setAddresses] = useState({});
+  const [depositStep, setDepositStep] = useState('closed'); // closed | picking | showing
+  const [selectedCoin, setSelectedCoin] = useState(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -40,7 +41,7 @@ export default function Dashboard({ username }) {
         setPrices(await priceRes.json());
         if (settingsRes.ok) {
           const s = await settingsRes.json();
-          setDepositAddress(s.btc_deposit_address);
+          setAddresses(s.addresses || {});
         }
       } catch (err) {
         setError(err.message);
@@ -49,9 +50,30 @@ export default function Dashboard({ username }) {
     load();
   }, []);
 
+  function openDeposit() {
+    setDepositStep('picking');
+  }
+
+  function closeDeposit() {
+    setDepositStep('closed');
+    setSelectedCoin(null);
+    setCopied(false);
+  }
+
+  function pickCoin(coin) {
+    setSelectedCoin(coin);
+    setDepositStep('showing');
+  }
+
+  function backToPicking() {
+    setDepositStep('picking');
+    setSelectedCoin(null);
+    setCopied(false);
+  }
+
   function copyAddress() {
-    if (!depositAddress) return;
-    navigator.clipboard.writeText(depositAddress);
+    if (!selectedCoin || !addresses[selectedCoin]) return;
+    navigator.clipboard.writeText(addresses[selectedCoin]);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -91,20 +113,44 @@ export default function Dashboard({ username }) {
             ? totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
             : '—'}
         </h1>
-        {depositAddress && (
-          <button
-            className="btn btn-primary"
-            style={{ marginTop: 12 }}
-            onClick={() => setShowDeposit((v) => !v)}
-          >
-            {showDeposit ? 'Hide deposit address' : 'Deposit BTC'}
+
+        {depositStep === 'closed' && Object.keys(addresses).length > 0 && (
+          <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={openDeposit}>
+            Deposit
           </button>
         )}
-        {showDeposit && depositAddress && (
+
+        {depositStep === 'picking' && (
+          <div style={{ marginTop: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>Choose a coin to deposit</span>
+              <button className="btn btn-ghost" onClick={closeDeposit}>Cancel</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              {Object.keys(addresses).map((coin) => (
+                <button
+                  key={coin}
+                  className="quick-action"
+                  style={{ width: '100%' }}
+                  onClick={() => pickCoin(coin)}
+                >
+                  <span className="icon-circle">{coin[0]}</span>
+                  {coin}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {depositStep === 'showing' && selectedCoin && (
           <div style={{ marginTop: 14, padding: 14, background: 'var(--bg-soft)', borderRadius: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>Send {selectedCoin} to this address</span>
+              <button className="btn btn-ghost" onClick={backToPicking}>← Back</button>
+            </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <code className="num" style={{ fontSize: 12, wordBreak: 'break-all', flex: 1 }}>
-                {depositAddress}
+                {addresses[selectedCoin]}
               </code>
               <button className="btn btn-ghost" style={{ flexShrink: 0 }} onClick={copyAddress}>
                 {copied ? 'Copied' : 'Copy'}
