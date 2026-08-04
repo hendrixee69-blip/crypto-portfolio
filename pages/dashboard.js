@@ -347,11 +347,9 @@ export default function Dashboard({ username }) {
                 <tr key={c.symbol}>
                   <td style={{ width: '45%' }}>
                     <div className="coin-cell">
-                      {p?.image ? (
-                        <img src={p.image} alt={c.name} className="coin-logo" />
-                      ) : (
-                        <span className="coin-logo" />
-                      )}
+                      <span className="coin-logo-wrap">
+                        {p?.image && <img src={p.image} alt={c.name} className="coin-logo-img" />}
+                      </span>
                       <span><strong>{c.symbol}</strong> <span className="muted">{c.name}</span></span>
                     </div>
                   </td>

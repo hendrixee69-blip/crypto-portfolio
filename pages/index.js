@@ -163,9 +163,11 @@ export default function Home() {
                       <div className="coin-cell">
                         <span className="coin-rank">{i + 1}</span>
                         {p?.image ? (
-                          <img src={p.image} alt={c.name} className="coin-logo" />
+                          <span className="coin-logo-wrap">
+                            <img src={p.image} alt={c.name} className="coin-logo-img" />
+                          </span>
                         ) : (
-                          <span className="coin-logo" />
+                          <span className="coin-logo-wrap" />
                         )}
                         <span>
                           <strong>{c.symbol}</strong> <span className="muted">{c.name}</span>
