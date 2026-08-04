@@ -25,6 +25,34 @@ export default function AdminPanel({ adminUsername }) {
   const [addrForm, setAddrForm] = useState({ coin: 'BTC', address: '' });
   const [settingsBusy, setSettingsBusy] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState('');
+  const [withdrawalRequests, setWithdrawalRequests] = useState([]);
+  const [resolvingId, setResolvingId] = useState(null);
+
+  async function loadWithdrawalRequests() {
+    const res = await fetch('/api/admin/withdrawals');
+    if (res.status === 401) return;
+    const data = await res.json();
+    setWithdrawalRequests(data.requests || []);
+  }
+
+  async function resolveWithdrawal(id, action) {
+    setResolvingId(id);
+    setError('');
+    try {
+      const res = await fetch('/api/admin/withdrawals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      await Promise.all([loadWithdrawalRequests(), loadUsers()]);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setResolvingId(null);
+    }
+  }
 
   async function loadUsers() {
     const res = await fetch('/api/admin/users');
@@ -40,7 +68,7 @@ export default function AdminPanel({ adminUsername }) {
     setAddresses(data.addresses || {});
   }
 
-  useEffect(() => { loadUsers(); loadSettings(); }, []);
+  useEffect(() => { loadUsers(); loadSettings(); loadWithdrawalRequests(); }, []);
 
   async function saveAddress(e) {
     e.preventDefault();
@@ -199,6 +227,62 @@ export default function AdminPanel({ adminUsername }) {
               ))}
             </tbody>
           </table>
+        )}
+      </div>
+
+      <div className="card">
+        <h3>Withdrawal requests</h3>
+        {withdrawalRequests.length ? (
+          <table style={{ marginTop: 12 }}>
+            <thead>
+              <tr><th>User</th><th>Coin</th><th>Amount</th><th>Destination</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody>
+              {withdrawalRequests.map((r) => (
+                <tr key={r.id}>
+                  <td>{r.display_name} <span className="muted" style={{ fontSize: 12 }}>@{r.username}</span></td>
+                  <td><strong>{r.coin}</strong></td>
+                  <td className="num">{Number(r.amount).toLocaleString()}</td>
+                  <td className="num muted" style={{ fontSize: 12, maxWidth: 160, wordBreak: 'break-all' }}>{r.destination_address}</td>
+                  <td>
+                    <span
+                      className="pill"
+                      style={{
+                        background: r.status === 'approved' ? 'var(--green-soft)' : r.status === 'rejected' ? 'var(--red-soft)' : '#FDF3E3',
+                        color: r.status === 'approved' ? 'var(--green)' : r.status === 'rejected' ? 'var(--red)' : '#9A6A1B',
+                      }}
+                    >
+                      {r.status}
+                    </span>
+                  </td>
+                  <td>
+                    {r.status === 'pending' && (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          className="btn btn-primary"
+                          style={{ padding: '5px 10px', fontSize: 12 }}
+                          disabled={resolvingId === r.id}
+                          onClick={() => resolveWithdrawal(r.id, 'approve')}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          className="btn btn-ghost"
+                          style={{ padding: '5px 10px', fontSize: 12 }}
+                          disabled={resolvingId === r.id}
+                          onClick={() => resolveWithdrawal(r.id, 'reject')}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="muted empty-state">No withdrawal requests yet.</p>
         )}
       </div>
 
