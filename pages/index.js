@@ -66,6 +66,7 @@ export default function Home() {
           <div className="brand"><span className="dot" /> Coinmy</div>
           <div style={{ display: 'flex', gap: 10 }}>
             <a className="nav-link" href="/login">Sign in</a>
+            <a className="nav-link primary" href="/signup">Sign up</a>
           </div>
         </div>
 

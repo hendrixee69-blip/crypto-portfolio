@@ -50,6 +50,9 @@ export default function Login() {
             </button>
           </form>
           <p className="muted" style={{ marginTop: 18, fontSize: 13 }}>
+            Don't have an account? <a href="/signup" style={{ color: 'var(--accent)', fontWeight: 600 }}>Sign up</a>
+          </p>
+          <p className="muted" style={{ marginTop: 6, fontSize: 13 }}>
             <a href="/">← Back to prices</a>
           </p>
         </div>
