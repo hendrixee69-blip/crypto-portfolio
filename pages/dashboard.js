@@ -34,6 +34,13 @@ export default function Dashboard({ username }) {
   const [withdrawForm, setWithdrawForm] = useState({ amount: '', address: '' });
   const [withdrawBusy, setWithdrawBusy] = useState(false);
   const [withdrawError, setWithdrawError] = useState('');
+  const [convertStep, setConvertStep] = useState('closed'); // closed | from | to | amount
+  const [convertFrom, setConvertFrom] = useState(null);
+  const [convertTo, setConvertTo] = useState(null);
+  const [convertAmount, setConvertAmount] = useState('');
+  const [convertBusy, setConvertBusy] = useState(false);
+  const [convertError, setConvertError] = useState('');
+  const [convertSuccess, setConvertSuccess] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -156,6 +163,58 @@ export default function Dashboard({ username }) {
     }
   }
 
+  function openConvert() {
+    setConvertStep('from');
+    setConvertSuccess(null);
+  }
+
+  function closeConvert() {
+    setConvertStep('closed');
+    setConvertFrom(null);
+    setConvertTo(null);
+    setConvertAmount('');
+    setConvertError('');
+  }
+
+  function pickConvertFrom(coin) {
+    setConvertFrom(coin);
+    setConvertStep('to');
+  }
+
+  function pickConvertTo(coin) {
+    setConvertTo(coin);
+    setConvertStep('amount');
+  }
+
+  function backConvertStep() {
+    if (convertStep === 'amount') { setConvertStep('to'); setConvertTo(null); }
+    else if (convertStep === 'to') { setConvertStep('from'); setConvertFrom(null); }
+  }
+
+  async function submitConvert(e) {
+    e.preventDefault();
+    setConvertError('');
+    setConvertBusy(true);
+    try {
+      const res = await fetch('/api/convert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from_coin: convertFrom, to_coin: convertTo, amount: convertAmount }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setConvertSuccess(data);
+      closeConvert();
+      // Re-pull holdings/history so the new balances show immediately.
+      const pRes = await fetch('/api/portfolio');
+      if (pRes.ok) setPortfolio(await pRes.json());
+    } catch (err) {
+      setConvertError(err.message);
+    } finally {
+      setConvertBusy(false);
+    }
+  }
+
   async function logout() {
     await fetch('/api/auth/logout', {
       method: 'POST',
@@ -226,13 +285,22 @@ export default function Dashboard({ username }) {
           )}
         </div>
 
-        {depositStep === 'closed' && withdrawStep === 'closed' && (
-          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+        {convertSuccess && (
+          <p style={{ fontSize: 13, marginTop: 10, color: 'var(--green)' }}>
+            Converted {Number(convertSuccess.converted_amount).toLocaleString(undefined, { maximumFractionDigits: 8 })} {convertSuccess.to_coin} received for {convertSuccess.from_coin}.
+          </p>
+        )}
+
+        {depositStep === 'closed' && withdrawStep === 'closed' && convertStep === 'closed' && (
+          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
             {Object.keys(addresses).length > 0 && (
               <button className="btn btn-primary" onClick={openDeposit}>Deposit</button>
             )}
             {portfolio?.holdings?.length > 0 && (
               <button className="btn btn-ghost" onClick={openWithdraw}>Withdraw</button>
+            )}
+            {portfolio?.holdings?.length > 0 && (
+              <button className="btn btn-ghost" onClick={openConvert}>Convert</button>
             )}
           </div>
         )}
@@ -335,6 +403,92 @@ export default function Dashboard({ username }) {
             </form>
           </div>
         )}
+
+        {convertStep === 'from' && (
+          <div style={{ marginTop: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>Convert from</span>
+              <button className="btn btn-ghost" onClick={closeConvert}>Cancel</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              {portfolio.holdings.map((h) => (
+                <button
+                  key={h.coin}
+                  className="quick-action"
+                  style={{ width: '100%' }}
+                  onClick={() => pickConvertFrom(h.coin)}
+                >
+                  <span className="icon-circle">{h.coin[0]}</span>
+                  {h.coin}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {convertStep === 'to' && convertFrom && (
+          <div style={{ marginTop: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>Convert {convertFrom} to</span>
+              <button className="btn btn-ghost" onClick={backConvertStep}>← Back</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              {COINS.filter((c) => c.symbol !== convertFrom).map((c) => (
+                <button
+                  key={c.symbol}
+                  className="quick-action"
+                  style={{ width: '100%' }}
+                  onClick={() => pickConvertTo(c.symbol)}
+                >
+                  <span className="icon-circle">{c.symbol[0]}</span>
+                  {c.symbol}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {convertStep === 'amount' && convertFrom && convertTo && (() => {
+          const holding = portfolio.holdings.find((h) => h.coin === convertFrom);
+          const available = holding ? Number(holding.balance) : 0;
+          const fromPrice = prices?.[BY_SYMBOL[convertFrom]?.id]?.usd;
+          const toPrice = prices?.[BY_SYMBOL[convertTo]?.id]?.usd;
+          const numeric = Number(convertAmount);
+          const estimate = fromPrice && toPrice && numeric > 0 ? (numeric * fromPrice) / toPrice : null;
+          return (
+            <div style={{ marginTop: 14, padding: 14, background: 'var(--bg-soft)', borderRadius: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>{convertFrom} → {convertTo}</span>
+                <button className="btn btn-ghost" onClick={backConvertStep}>← Back</button>
+              </div>
+              <form onSubmit={submitConvert}>
+                <div className="field">
+                  <label>Amount ({convertFrom}) — {available.toLocaleString()} available</label>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    max={available}
+                    value={convertAmount}
+                    onChange={(e) => setConvertAmount(e.target.value)}
+                    required
+                  />
+                </div>
+                {estimate !== null && (
+                  <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>
+                    ≈ <span className="num" style={{ fontWeight: 700, color: 'var(--text)' }}>
+                      {estimate.toLocaleString(undefined, { maximumFractionDigits: 8 })}
+                    </span> {convertTo} at the current rate
+                  </p>
+                )}
+                {convertError && <p className="error-text">{convertError}</p>}
+                <button className="btn btn-primary" style={{ width: '100%' }} disabled={convertBusy}>
+                  {convertBusy ? 'Converting…' : 'Convert'}
+                </button>
+              </form>
+            </div>
+          );
+        })()}
       </div>
 
       <div className="card">
