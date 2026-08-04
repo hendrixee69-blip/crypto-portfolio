@@ -130,7 +130,7 @@ export default function Dashboard({ username }) {
     <>
       <div className="container">
       <div className="header">
-        <div className="brand"><span className="dot" /> Ledger</div>
+        <div className="brand"><span className="dot" /> Coinmy</div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <span className="muted" style={{ fontSize: 14 }}>{username}</span>
           <button className="nav-link" onClick={logout}>Sign out</button>

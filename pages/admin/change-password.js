@@ -53,7 +53,7 @@ export default function ChangePassword({ adminUsername }) {
     <>
       <div className="container">
       <div className="header">
-        <div className="brand"><span className="dot" /> Ledger <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· admin</span></div>
+        <div className="brand"><span className="dot" /> Coinmy <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}>· admin</span></div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <span className="muted" style={{ fontSize: 14 }}>{adminUsername}</span>
           <a className="nav-link" href="/admin">Back to admin</a>

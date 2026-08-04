@@ -63,7 +63,7 @@ export default function Home() {
 
       <div className="container">
         <div className="header">
-          <div className="brand"><span className="dot" /> Ledger</div>
+          <div className="brand"><span className="dot" /> Coinmy</div>
           <div style={{ display: 'flex', gap: 10 }}>
             <a className="nav-link" href="/login">Sign in</a>
           </div>
@@ -101,7 +101,7 @@ export default function Home() {
 
         <div className="promo-banner">
           <div>
-            <div className="promo-banner-tag">★ Ledger Plus</div>
+            <div className="promo-banner-tag">★ Coinmy Plus</div>
             <h3>Track unlimited assets, zero clutter.</h3>
             <p>Get a personal dashboard, live alerts, and priority support with your account.</p>
           </div>
