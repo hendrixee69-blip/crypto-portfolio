@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { requireRole } from '../lib/auth';
 import { COINS, BY_SYMBOL } from '../lib/coins';
+import LanguageSelector from '../components/LanguageSelector';
 
 export async function getServerSideProps({ req }) {
   const session = requireRole(req, 'user');
@@ -190,6 +191,7 @@ export default function Dashboard({ username }) {
       <div className="header">
         <div className="brand"><span className="dot" /> Coinmy</div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <LanguageSelector />
           <span className="muted" style={{ fontSize: 14 }}>{username}</span>
           <button className="nav-link" onClick={logout}>Sign out</button>
         </div>

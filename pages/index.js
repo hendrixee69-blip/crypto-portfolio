@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { COINS } from '../lib/coins';
+import LanguageSelector from '../components/LanguageSelector';
 
 function fmtPrice(n) {
   if (n === undefined || n === null) return '—';
@@ -64,7 +65,8 @@ export default function Home() {
       <div className="container">
         <div className="header">
           <div className="brand"><span className="dot" /> Coinmy</div>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <LanguageSelector />
             <a className="nav-link" href="/login">Sign in</a>
             <a className="nav-link primary" href="/signup">Sign up</a>
           </div>
