@@ -43,6 +43,9 @@ export default function AdminPanel({ adminUsername }) {
   const [editingDate, setEditingDate] = useState({});
   const [editingNote, setEditingNote] = useState({});
   const [savingNoteId, setSavingNoteId] = useState(null);
+  const [editingAmount, setEditingAmount] = useState({});
+  const [savingAmountId, setSavingAmountId] = useState(null);
+  const [deletingEntryId, setDeletingEntryId] = useState(null);
   const [savingDateId, setSavingDateId] = useState(null);
   const [addresses, setAddresses] = useState({});
   const [addrForm, setAddrForm] = useState({ coin: 'BTC', address: '' });
@@ -318,6 +321,53 @@ export default function AdminPanel({ adminUsername }) {
       setError(err.message);
     } finally {
       setSavingNoteId(null);
+    }
+  }
+
+  async function saveEntryAmount(id) {
+    const newAmount = editingAmount[id];
+    if (!(Number(newAmount) > 0)) {
+      setError('Enter a valid amount greater than 0');
+      return;
+    }
+    setSavingAmountId(id);
+    setError('');
+    try {
+      const res = await fetch('/api/admin/ledger', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, amount: newAmount }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setEditingAmount((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      await Promise.all([loadUsers(), loadLedger(selectedId)]);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingAmountId(null);
+    }
+  }
+
+  async function deleteEntry(id) {
+    if (!window.confirm('Delete this entry permanently? This changes the user\'s balance and can\'t be undone.')) {
+      return;
+    }
+    setDeletingEntryId(id);
+    setError('');
+    try {
+      const res = await fetch(`/api/admin/ledger?id=${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      await Promise.all([loadUsers(), loadLedger(selectedId)]);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeletingEntryId(null);
     }
   }
 
@@ -799,14 +849,55 @@ export default function AdminPanel({ adminUsername }) {
 
               <h3 style={{ marginTop: 24 }}>Ledger history</h3>
               <table style={{ marginTop: 12 }}>
-                <thead><tr><th>Type</th><th>Coin</th><th>Amount</th><th>Note</th><th>By</th><th>Date</th></tr></thead>
+                <thead><tr><th>Type</th><th>Coin</th><th>Amount</th><th>Note</th><th>By</th><th>Date</th><th></th></tr></thead>
                 <tbody>
                   {ledger.map((l) => (
                     <tr key={l.id}>
                       <td><span className={`pill pill-${l.type}`}>{l.type}</span></td>
                       <td>{l.coin}</td>
                       <td className="num">
-                        {fmtCoin(l.amount)}
+                        {editingAmount[l.id] !== undefined ? (
+                          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                            <input
+                              type="number"
+                              step="any"
+                              min="0"
+                              value={editingAmount[l.id]}
+                              onChange={(e) => setEditingAmount((prev) => ({ ...prev, [l.id]: e.target.value }))}
+                              style={{
+                                fontSize: 12, padding: '4px 6px', border: '1px solid var(--border)',
+                                borderRadius: 6, width: 110,
+                              }}
+                            />
+                            <button
+                              className="btn btn-primary"
+                              style={{ padding: '4px 8px', fontSize: 11 }}
+                              disabled={savingAmountId === l.id}
+                              onClick={() => saveEntryAmount(l.id)}
+                            >
+                              {savingAmountId === l.id ? '…' : 'Save'}
+                            </button>
+                            <button
+                              className="btn btn-ghost"
+                              style={{ padding: '4px 8px', fontSize: 11 }}
+                              onClick={() => setEditingAmount((prev) => {
+                                const next = { ...prev };
+                                delete next[l.id];
+                                return next;
+                              })}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <span
+                            style={{ cursor: 'pointer', borderBottom: '1px dashed var(--text-muted)' }}
+                            onClick={() => setEditingAmount((prev) => ({ ...prev, [l.id]: String(l.amount) }))}
+                            title="Click to edit amount"
+                          >
+                            {fmtCoin(l.amount)}
+                          </span>
+                        )}
                         {usdValue(prices, l.coin, l.amount) && (
                           <div className="muted" style={{ fontSize: 11 }}>{usdValue(prices, l.coin, l.amount)}</div>
                         )}
@@ -900,10 +991,20 @@ export default function AdminPanel({ adminUsername }) {
                           </span>
                         )}
                       </td>
+                      <td>
+                        <button
+                          className="btn btn-ghost"
+                          style={{ padding: '5px 9px', fontSize: 11, color: 'var(--red)', borderColor: 'var(--red-soft)' }}
+                          disabled={deletingEntryId === l.id}
+                          onClick={() => deleteEntry(l.id)}
+                        >
+                          {deletingEntryId === l.id ? '…' : 'Delete'}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {!ledger.length && (
-                    <tr><td colSpan={6} className="muted empty-state">No entries yet.</td></tr>
+                    <tr><td colSpan={7} className="muted empty-state">No entries yet.</td></tr>
                   )}
                 </tbody>
               </table>

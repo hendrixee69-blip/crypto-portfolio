@@ -77,12 +77,12 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === 'PATCH') {
-    const { id, created_at, note } = req.body || {};
+    const { id, created_at, note, amount } = req.body || {};
     if (!id) {
       return res.status(400).json({ error: 'id is required' });
     }
-    if (created_at === undefined && note === undefined) {
-      return res.status(400).json({ error: 'Provide created_at and/or note to update' });
+    if (created_at === undefined && note === undefined && amount === undefined) {
+      return res.status(400).json({ error: 'Provide created_at, note, and/or amount to update' });
     }
 
     const sets = [];
@@ -102,6 +102,14 @@ module.exports = async function handler(req, res) {
       sets.push(`note = $${paramIndex++}`);
       values.push(note.trim() || null);
     }
+    if (amount !== undefined) {
+      const numericAmount = Number(amount);
+      if (!(numericAmount > 0)) {
+        return res.status(400).json({ error: 'amount must be a positive number' });
+      }
+      sets.push(`amount = $${paramIndex++}`);
+      values.push(numericAmount);
+    }
 
     values.push(id);
     const { rows } = await pool.query(
@@ -110,6 +118,14 @@ module.exports = async function handler(req, res) {
     );
     if (!rows[0]) return res.status(404).json({ error: 'Entry not found' });
     return res.status(200).json({ entry: rows[0] });
+  }
+
+  if (req.method === 'DELETE') {
+    const { id } = req.query;
+    if (!id) return res.status(400).json({ error: 'id is required' });
+    const { rowCount } = await pool.query('DELETE FROM ledger WHERE id = $1', [id]);
+    if (rowCount === 0) return res.status(404).json({ error: 'Entry not found' });
+    return res.status(200).json({ ok: true });
   }
 
   return res.status(405).json({ error: 'Method not allowed' });
