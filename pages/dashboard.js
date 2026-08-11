@@ -70,21 +70,30 @@ export default function Dashboard({ username }) {
       }
     }
 
-    // Prices alone, on a timer — holdings and the deposit address list rarely
-    // change mid-session, so there's no need to re-fetch those every 30s too.
-    async function refreshPricesOnly() {
+    // Refresh everything on a timer — prices AND holdings/withdrawals — so
+    // changes an admin makes while the user's tab is open (a new deposit,
+    // withdrawal, or adjustment) actually show up without a manual reload.
+    async function refreshAll() {
       try {
-        const res = await fetch('/api/prices');
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled) setPrices(data);
+        const [pRes, priceRes, wRes] = await Promise.all([
+          fetch('/api/portfolio'),
+          fetch('/api/prices'),
+          fetch('/api/withdrawals'),
+        ]);
+        if (cancelled) return;
+        if (pRes.ok) setPortfolio(await pRes.json());
+        if (priceRes.ok) setPrices(await priceRes.json());
+        if (wRes.ok) {
+          const w = await wRes.json();
+          setWithdrawals(w.requests || []);
+        }
       } catch {
-        // Silent — a missed price refresh isn't worth surfacing an error for.
+        // Silent — a missed periodic refresh isn't worth surfacing an error for.
       }
     }
 
     loadAll();
-    const interval = setInterval(refreshPricesOnly, 30_000);
+    const interval = setInterval(refreshAll, 30_000);
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
@@ -205,7 +214,6 @@ export default function Dashboard({ username }) {
       if (!res.ok) throw new Error(data.error);
       setConvertSuccess(data);
       closeConvert();
-      // Re-pull holdings/history so the new balances show immediately.
       const pRes = await fetch('/api/portfolio');
       if (pRes.ok) setPortfolio(await pRes.json());
     } catch (err) {
@@ -230,8 +238,6 @@ export default function Dashboard({ username }) {
     return sum + Number(h.balance) * price;
   }, 0);
 
-  // Weighted 24h change across whatever the user actually holds, so the
-  // number reflects their real exposure rather than the market in general.
   const portfolioChangePct = (() => {
     if (!portfolio?.holdings?.length || !prices || !totalValue) return null;
     const weightedChange = portfolio.holdings.reduce((sum, h) => {
@@ -503,9 +509,13 @@ export default function Dashboard({ username }) {
                 <tr key={c.symbol}>
                   <td style={{ width: '45%' }}>
                     <div className="coin-cell">
-                      <span className="coin-logo-wrap">
-                        {p?.image && <img src={p.image} alt={c.name} className="coin-logo-img" />}
-                      </span>
+                      {p?.image ? (
+                        <span className="coin-logo-wrap">
+                          <img src={p.image} alt={c.name} className="coin-logo-img" />
+                        </span>
+                      ) : (
+                        <span className="coin-logo-wrap" />
+                      )}
                       <span><strong>{c.symbol}</strong> <span className="muted">{c.name}</span></span>
                     </div>
                   </td>
