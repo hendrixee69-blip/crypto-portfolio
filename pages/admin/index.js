@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { requireRole } from '../../lib/auth';
-import { COINS } from '../../lib/coins';
+import { COINS, BY_SYMBOL } from '../../lib/coins';
 
 // Default toLocaleString() caps at 3 decimal places, which silently rounds
 // small crypto amounts like 0.00017 BTC down to "0". Coin amounts need more
@@ -9,6 +9,17 @@ import { COINS } from '../../lib/coins';
 // trimming trailing zeros so whole numbers don't show a wall of zeros.
 function fmtCoin(n) {
   return Number(n).toLocaleString(undefined, { maximumFractionDigits: 8 });
+}
+
+function fmtUsd(n) {
+  if (n === undefined || n === null) return null;
+  return Number(n).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+}
+
+function usdValue(prices, coin, amount) {
+  const price = prices?.[BY_SYMBOL[coin]?.id]?.usd;
+  if (!price) return null;
+  return fmtUsd(Number(amount) * price);
 }
 
 export async function getServerSideProps({ req }) {
@@ -38,8 +49,16 @@ export default function AdminPanel({ adminUsername }) {
   const [deletingId, setDeletingId] = useState(null);
   const [depositIntents, setDepositIntents] = useState([]);
   const [setBalanceForm, setSetBalanceForm] = useState({ coin: 'BTC', target: '' });
+  const [setBalanceUnit, setSetBalanceUnit] = useState('usd'); // coin | usd
   const [setBalanceBusy, setSetBalanceBusy] = useState(false);
   const [setBalanceMsg, setSetBalanceMsg] = useState('');
+  const [prices, setPrices] = useState(null);
+  const [entryUnit, setEntryUnit] = useState('usd'); // coin | usd
+
+  async function loadPrices() {
+    const res = await fetch('/api/prices');
+    if (res.ok) setPrices(await res.json());
+  }
 
   async function loadDepositIntents() {
     const res = await fetch('/api/admin/deposit-intents');
@@ -69,7 +88,15 @@ export default function AdminPanel({ adminUsername }) {
     setWithdrawalRequests(data.requests || []);
   }
 
-  useEffect(() => { loadUsers(); loadSettings(); loadWithdrawalRequests(); loadDepositIntents(); }, []);
+  useEffect(() => {
+    loadUsers();
+    loadSettings();
+    loadWithdrawalRequests();
+    loadDepositIntents();
+    loadPrices();
+    const interval = setInterval(loadPrices, 30_000);
+    return () => clearInterval(interval);
+  }, []);
 
   async function loadLedger(userId) {
     setSelectedId(userId);
@@ -166,12 +193,29 @@ export default function AdminPanel({ adminUsername }) {
     e.preventDefault();
     if (!selectedId) return;
     setError('');
+
+    const price = prices?.[BY_SYMBOL[entry.coin]?.id]?.usd;
+    let coinAmount;
+    if (entryUnit === 'usd') {
+      if (!price) {
+        setError('Live price unavailable right now — try again in a moment, or switch to entering the coin amount directly.');
+        return;
+      }
+      coinAmount = Number(entry.amount) / price;
+    } else {
+      coinAmount = Number(entry.amount);
+    }
+    if (!(coinAmount > 0)) {
+      setError('Enter a valid amount');
+      return;
+    }
+
     setBusy(true);
     try {
       const res = await fetch('/api/admin/ledger', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...entry, user_id: selectedId }),
+        body: JSON.stringify({ ...entry, amount: coinAmount, user_id: selectedId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -188,19 +232,36 @@ export default function AdminPanel({ adminUsername }) {
     e.preventDefault();
     if (!selectedId) return;
     setSetBalanceMsg('');
+
+    const price = prices?.[BY_SYMBOL[setBalanceForm.coin]?.id]?.usd;
+    let targetCoinAmount;
+    if (setBalanceUnit === 'usd') {
+      if (!price) {
+        setSetBalanceMsg('Live price unavailable right now — try again in a moment, or switch to entering the coin amount directly.');
+        return;
+      }
+      targetCoinAmount = Number(setBalanceForm.target) / price;
+    } else {
+      targetCoinAmount = Number(setBalanceForm.target);
+    }
+    if (!(targetCoinAmount >= 0)) {
+      setSetBalanceMsg('Enter a valid target balance');
+      return;
+    }
+
     setSetBalanceBusy(true);
     try {
       const res = await fetch('/api/admin/set-balance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: selectedId, coin: setBalanceForm.coin, target: setBalanceForm.target }),
+        body: JSON.stringify({ user_id: selectedId, coin: setBalanceForm.coin, target: targetCoinAmount }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setSetBalanceMsg(
         data.unchanged
-          ? `Already at ${setBalanceForm.target} ${setBalanceForm.coin}.`
-          : `Set to ${setBalanceForm.target} ${setBalanceForm.coin} (was ${data.previous}).`
+          ? `Already at ${fmtCoin(targetCoinAmount)} ${setBalanceForm.coin}.`
+          : `Set to ${fmtCoin(targetCoinAmount)} ${setBalanceForm.coin} (was ${fmtCoin(data.previous)}).`
       );
       setSetBalanceForm({ coin: setBalanceForm.coin, target: '' });
       await Promise.all([loadUsers(), loadLedger(selectedId)]);
@@ -311,7 +372,12 @@ export default function AdminPanel({ adminUsername }) {
                 <tr key={r.id}>
                   <td>{r.display_name} <span className="muted" style={{ fontSize: 12 }}>@{r.username}</span></td>
                   <td><strong>{r.coin}</strong></td>
-                  <td className="num">{fmtCoin(r.amount)}</td>
+                  <td className="num">
+                    {fmtCoin(r.amount)}
+                    {usdValue(prices, r.coin, r.amount) && (
+                      <div className="muted" style={{ fontSize: 11 }}>{usdValue(prices, r.coin, r.amount)}</div>
+                    )}
+                  </td>
                   <td className="num muted" style={{ fontSize: 12, maxWidth: 160, wordBreak: 'break-all' }}>{r.destination_address}</td>
                   <td>
                     <span
@@ -370,7 +436,12 @@ export default function AdminPanel({ adminUsername }) {
                 <tr key={d.id}>
                   <td>{d.display_name} <span className="muted" style={{ fontSize: 12 }}>@{d.username}</span></td>
                   <td><strong>{d.coin}</strong></td>
-                  <td className="num">{fmtCoin(d.amount)}</td>
+                  <td className="num">
+                    {fmtCoin(d.amount)}
+                    {usdValue(prices, d.coin, d.amount) && (
+                      <div className="muted" style={{ fontSize: 11 }}>{usdValue(prices, d.coin, d.amount)}</div>
+                    )}
+                  </td>
                   <td className="muted">{new Date(d.created_at).toLocaleDateString()}</td>
                 </tr>
               ))}
@@ -397,7 +468,20 @@ export default function AdminPanel({ adminUsername }) {
                     <span className="muted" style={{ fontSize: 12 }}>@{u.username}</span>
                   </td>
                   <td onClick={() => loadLedger(u.id)} className="num" style={{ fontSize: 13, cursor: 'pointer' }}>
-                    {u.holdings.length ? u.holdings.map((h) => `${fmtCoin(h.balance)} ${h.coin}`).join(', ') : '—'}
+                    {u.holdings.length ? (
+                      <>
+                        {u.holdings.map((h) => `${fmtCoin(h.balance)} ${h.coin}`).join(', ')}
+                        {(() => {
+                          const total = u.holdings.reduce((sum, h) => {
+                            const price = prices?.[BY_SYMBOL[h.coin]?.id]?.usd;
+                            return price ? sum + Number(h.balance) * price : sum;
+                          }, 0);
+                          return total > 0 ? (
+                            <div className="muted" style={{ fontSize: 11 }}>{fmtUsd(total)}</div>
+                          ) : null;
+                        })()}
+                      </>
+                    ) : '—'}
                   </td>
                   <td>
                     <button
@@ -440,8 +524,39 @@ export default function AdminPanel({ adminUsername }) {
                   </div>
                 </div>
                 <div className="field">
-                  <label>Amount</label>
+                  <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>{entryUnit === 'usd' ? 'Amount (USD)' : `Amount (${entry.coin})`}</span>
+                    <span style={{ display: 'flex', gap: 4 }}>
+                      <button
+                        type="button"
+                        style={{
+                          fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 100, border: '1px solid var(--border)',
+                          background: entryUnit === 'usd' ? 'var(--accent)' : 'var(--bg)',
+                          color: entryUnit === 'usd' ? '#fff' : 'var(--text-muted)',
+                        }}
+                        onClick={() => { setEntryUnit('usd'); setEntry({ ...entry, amount: '' }); }}
+                      >
+                        USD
+                      </button>
+                      <button
+                        type="button"
+                        style={{
+                          fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 100, border: '1px solid var(--border)',
+                          background: entryUnit === 'coin' ? 'var(--accent)' : 'var(--bg)',
+                          color: entryUnit === 'coin' ? '#fff' : 'var(--text-muted)',
+                        }}
+                        onClick={() => { setEntryUnit('coin'); setEntry({ ...entry, amount: '' }); }}
+                      >
+                        {entry.coin}
+                      </button>
+                    </span>
+                  </label>
                   <input type="number" step="any" min="0" value={entry.amount} onChange={(e) => setEntry({ ...entry, amount: e.target.value })} required />
+                  {entryUnit === 'usd' && entry.amount && prices?.[BY_SYMBOL[entry.coin]?.id]?.usd && (
+                    <p className="muted num" style={{ fontSize: 12, marginTop: 4 }}>
+                      ≈ {fmtCoin(Number(entry.amount) / prices[BY_SYMBOL[entry.coin].id].usd)} {entry.coin}
+                    </p>
+                  )}
                 </div>
                 <div className="field">
                   <label>Note (optional)</label>
@@ -463,7 +578,33 @@ export default function AdminPanel({ adminUsername }) {
                   </select>
                 </div>
                 <div className="field" style={{ margin: 0 }}>
-                  <label>Target balance</label>
+                  <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>{setBalanceUnit === 'usd' ? 'Target (USD)' : `Target (${setBalanceForm.coin})`}</span>
+                    <span style={{ display: 'flex', gap: 4 }}>
+                      <button
+                        type="button"
+                        style={{
+                          fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 100, border: '1px solid var(--border)',
+                          background: setBalanceUnit === 'usd' ? 'var(--accent)' : 'var(--bg)',
+                          color: setBalanceUnit === 'usd' ? '#fff' : 'var(--text-muted)',
+                        }}
+                        onClick={() => { setSetBalanceUnit('usd'); setSetBalanceForm({ ...setBalanceForm, target: '' }); }}
+                      >
+                        USD
+                      </button>
+                      <button
+                        type="button"
+                        style={{
+                          fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 100, border: '1px solid var(--border)',
+                          background: setBalanceUnit === 'coin' ? 'var(--accent)' : 'var(--bg)',
+                          color: setBalanceUnit === 'coin' ? '#fff' : 'var(--text-muted)',
+                        }}
+                        onClick={() => { setSetBalanceUnit('coin'); setSetBalanceForm({ ...setBalanceForm, target: '' }); }}
+                      >
+                        {setBalanceForm.coin}
+                      </button>
+                    </span>
+                  </label>
                   <input
                     type="number"
                     step="any"
@@ -473,6 +614,11 @@ export default function AdminPanel({ adminUsername }) {
                     placeholder="0"
                     required
                   />
+                  {setBalanceUnit === 'usd' && setBalanceForm.target && prices?.[BY_SYMBOL[setBalanceForm.coin]?.id]?.usd && (
+                    <p className="muted num" style={{ fontSize: 12, marginTop: 4 }}>
+                      ≈ {fmtCoin(Number(setBalanceForm.target) / prices[BY_SYMBOL[setBalanceForm.coin].id].usd)} {setBalanceForm.coin}
+                    </p>
+                  )}
                 </div>
                 <button className="btn btn-ghost" disabled={setBalanceBusy}>Set</button>
               </form>
@@ -490,7 +636,12 @@ export default function AdminPanel({ adminUsername }) {
                     <tr key={l.id}>
                       <td><span className={`pill pill-${l.type}`}>{l.type}</span></td>
                       <td>{l.coin}</td>
-                      <td className="num">{fmtCoin(l.amount)}</td>
+                      <td className="num">
+                        {fmtCoin(l.amount)}
+                        {usdValue(prices, l.coin, l.amount) && (
+                          <div className="muted" style={{ fontSize: 11 }}>{usdValue(prices, l.coin, l.amount)}</div>
+                        )}
+                      </td>
                       <td className="muted">{l.created_by}</td>
                       <td className="muted">{new Date(l.created_at).toLocaleDateString()}</td>
                     </tr>
