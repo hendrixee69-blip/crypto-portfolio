@@ -28,6 +28,9 @@ export default function AdminPanel({ adminUsername }) {
   const [withdrawalRequests, setWithdrawalRequests] = useState([]);
   const [resolvingId, setResolvingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [setBalanceForm, setSetBalanceForm] = useState({ coin: 'BTC', target: '' });
+  const [setBalanceBusy, setSetBalanceBusy] = useState(false);
+  const [setBalanceMsg, setSetBalanceMsg] = useState('');
 
   async function loadUsers() {
     const res = await fetch('/api/admin/users');
@@ -162,6 +165,33 @@ export default function AdminPanel({ adminUsername }) {
       setError(err.message);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function submitSetBalance(e) {
+    e.preventDefault();
+    if (!selectedId) return;
+    setSetBalanceMsg('');
+    setSetBalanceBusy(true);
+    try {
+      const res = await fetch('/api/admin/set-balance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: selectedId, coin: setBalanceForm.coin, target: setBalanceForm.target }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setSetBalanceMsg(
+        data.unchanged
+          ? `Already at ${setBalanceForm.target} ${setBalanceForm.coin}.`
+          : `Set to ${setBalanceForm.target} ${setBalanceForm.coin} (was ${data.previous}).`
+      );
+      setSetBalanceForm({ coin: setBalanceForm.coin, target: '' });
+      await Promise.all([loadUsers(), loadLedger(selectedId)]);
+    } catch (err) {
+      setSetBalanceMsg(err.message);
+    } finally {
+      setSetBalanceBusy(false);
     }
   }
 
@@ -377,6 +407,38 @@ export default function AdminPanel({ adminUsername }) {
                 </div>
                 <button className="btn btn-primary" disabled={busy}>Record entry</button>
               </form>
+
+              <h3 style={{ marginTop: 24 }}>Set exact balance</h3>
+              <p className="muted" style={{ fontSize: 12, marginBottom: 10 }}>
+                Sets the coin to this exact amount — enter 0 to zero out the account.
+                Automatically records a deposit or withdrawal for the difference.
+              </p>
+              <form onSubmit={submitSetBalance} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'end' }}>
+                <div className="field" style={{ margin: 0 }}>
+                  <label>Coin</label>
+                  <select value={setBalanceForm.coin} onChange={(e) => setSetBalanceForm({ ...setBalanceForm, coin: e.target.value })}>
+                    {COINS.map((c) => <option key={c.symbol} value={c.symbol}>{c.symbol}</option>)}
+                  </select>
+                </div>
+                <div className="field" style={{ margin: 0 }}>
+                  <label>Target balance</label>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    value={setBalanceForm.target}
+                    onChange={(e) => setSetBalanceForm({ ...setBalanceForm, target: e.target.value })}
+                    placeholder="0"
+                    required
+                  />
+                </div>
+                <button className="btn btn-ghost" disabled={setBalanceBusy}>Set</button>
+              </form>
+              {setBalanceMsg && (
+                <p style={{ fontSize: 13, marginTop: 8, color: setBalanceMsg.startsWith('Set to') || setBalanceMsg.startsWith('Already') ? 'var(--green)' : 'var(--red)' }}>
+                  {setBalanceMsg}
+                </p>
+              )}
 
               <h3 style={{ marginTop: 24 }}>Ledger history</h3>
               <table style={{ marginTop: 12 }}>
