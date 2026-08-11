@@ -18,7 +18,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { user_id, type, coin, amount, note } = req.body || {};
+    const { user_id, type, coin, amount, note, created_at } = req.body || {};
     if (!user_id || !type || !coin || !amount) {
       return res.status(400).json({ error: 'user_id, type, coin, and amount are required' });
     }
@@ -32,8 +32,15 @@ module.exports = async function handler(req, res) {
     if (!(numericAmount > 0)) {
       return res.status(400).json({ error: 'amount must be a positive number' });
     }
+    let dateValue = null;
+    if (created_at) {
+      const parsed = new Date(created_at);
+      if (isNaN(parsed.getTime())) {
+        return res.status(400).json({ error: 'Invalid date' });
+      }
+      dateValue = parsed.toISOString();
+    }
 
-    // Prevent withdrawals that would push a balance negative.
     if (type === 'withdrawal') {
       const { rows } = await pool.query(
         `SELECT COALESCE(SUM(CASE WHEN type = 'deposit' THEN amount
@@ -50,12 +57,35 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    const { rows } = await pool.query(
-      `INSERT INTO ledger (user_id, type, coin, amount, note, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [user_id, type, coin, numericAmount, note || null, session.username]
-    );
+    const { rows } = dateValue
+      ? await pool.query(
+          `INSERT INTO ledger (user_id, type, coin, amount, note, created_by, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+          [user_id, type, coin, numericAmount, note || null, session.username, dateValue]
+        )
+      : await pool.query(
+          `INSERT INTO ledger (user_id, type, coin, amount, note, created_by)
+           VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+          [user_id, type, coin, numericAmount, note || null, session.username]
+        );
     return res.status(201).json({ entry: rows[0] });
+  }
+
+  if (req.method === 'PATCH') {
+    const { id, created_at } = req.body || {};
+    if (!id || !created_at) {
+      return res.status(400).json({ error: 'id and created_at are required' });
+    }
+    const parsed = new Date(created_at);
+    if (isNaN(parsed.getTime())) {
+      return res.status(400).json({ error: 'Invalid date' });
+    }
+    const { rows } = await pool.query(
+      'UPDATE ledger SET created_at = $1 WHERE id = $2 RETURNING *',
+      [parsed.toISOString(), id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Entry not found' });
+    return res.status(200).json({ entry: rows[0] });
   }
 
   return res.status(405).json({ error: 'Method not allowed' });

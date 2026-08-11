@@ -39,7 +39,9 @@ export default function AdminPanel({ adminUsername }) {
   const [busy, setBusy] = useState(false);
 
   const [newUser, setNewUser] = useState({ username: '', password: '', display_name: '' });
-  const [entry, setEntry] = useState({ type: 'deposit', coin: 'BTC', amount: '', note: '' });
+  const [entry, setEntry] = useState({ type: 'deposit', coin: 'BTC', amount: '', note: '', created_at: '' });
+  const [editingDate, setEditingDate] = useState({});
+  const [savingDateId, setSavingDateId] = useState(null);
   const [addresses, setAddresses] = useState({});
   const [addrForm, setAddrForm] = useState({ coin: 'BTC', address: '' });
   const [settingsBusy, setSettingsBusy] = useState(false);
@@ -257,12 +259,38 @@ export default function AdminPanel({ adminUsername }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setEntry({ type: 'deposit', coin: 'BTC', amount: '', note: '' });
+      setEntry({ type: 'deposit', coin: 'BTC', amount: '', note: '', created_at: '' });
       await Promise.all([loadUsers(), loadLedger(selectedId)]);
     } catch (err) {
       setError(err.message);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function saveEntryDate(id) {
+    const newDate = editingDate[id];
+    if (!newDate) return;
+    setSavingDateId(id);
+    setError('');
+    try {
+      const res = await fetch('/api/admin/ledger', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, created_at: newDate }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setEditingDate((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      await loadLedger(selectedId);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingDateId(null);
     }
   }
 
@@ -668,6 +696,14 @@ export default function AdminPanel({ adminUsername }) {
                   <label>Note (optional)</label>
                   <input value={entry.note} onChange={(e) => setEntry({ ...entry, note: e.target.value })} placeholder="e.g. wire ref #4471" />
                 </div>
+                <div className="field">
+                  <label>Date (optional — defaults to right now)</label>
+                  <input
+                    type="date"
+                    value={entry.created_at}
+                    onChange={(e) => setEntry({ ...entry, created_at: e.target.value })}
+                  />
+                </div>
                 <button className="btn btn-primary" disabled={busy}>Record entry</button>
               </form>
 
@@ -749,7 +785,51 @@ export default function AdminPanel({ adminUsername }) {
                         )}
                       </td>
                       <td className="muted">{l.created_by}</td>
-                      <td className="muted">{new Date(l.created_at).toLocaleDateString()}</td>
+                      <td className="muted">
+                        {editingDate[l.id] !== undefined ? (
+                          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                            <input
+                              type="date"
+                              value={editingDate[l.id]}
+                              onChange={(e) => setEditingDate((prev) => ({ ...prev, [l.id]: e.target.value }))}
+                              style={{
+                                fontSize: 12, padding: '4px 6px', border: '1px solid var(--border)',
+                                borderRadius: 6, width: 130,
+                              }}
+                            />
+                            <button
+                              className="btn btn-primary"
+                              style={{ padding: '4px 8px', fontSize: 11 }}
+                              disabled={savingDateId === l.id}
+                              onClick={() => saveEntryDate(l.id)}
+                            >
+                              {savingDateId === l.id ? '…' : 'Save'}
+                            </button>
+                            <button
+                              className="btn btn-ghost"
+                              style={{ padding: '4px 8px', fontSize: 11 }}
+                              onClick={() => setEditingDate((prev) => {
+                                const next = { ...prev };
+                                delete next[l.id];
+                                return next;
+                              })}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <span
+                            style={{ cursor: 'pointer', borderBottom: '1px dashed var(--text-muted)' }}
+                            onClick={() => setEditingDate((prev) => ({
+                              ...prev,
+                              [l.id]: new Date(l.created_at).toISOString().slice(0, 10),
+                            }))}
+                            title="Click to edit date"
+                          >
+                            {new Date(l.created_at).toLocaleDateString()}
+                          </span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                   {!ledger.length && (
