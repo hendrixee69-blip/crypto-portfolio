@@ -1018,10 +1018,10 @@ export default function Dashboard({ username }) {
                 <tr key={i}>
                   {h.type === 'conversion' ? (
                     <>
-                      <td><span className="pill pill-conversion">conversion</span></td>
+                      <td><span className="pill pill-conversion">converted</span></td>
                       <td>{h.from_coin} → {h.to_coin}</td>
                       <td className="num">{fmtCoin(h.from_amount)} → {fmtCoin(h.to_amount)}</td>
-                      <td className="muted">—</td>
+                      <td className="muted">Converted successful</td>
                     </>
                   ) : (
                     <>
