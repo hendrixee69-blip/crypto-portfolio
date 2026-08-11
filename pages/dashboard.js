@@ -1016,10 +1016,21 @@ export default function Dashboard({ username }) {
             <tbody>
               {portfolio.history.map((h, i) => (
                 <tr key={i}>
-                  <td><span className={`pill pill-${h.type}`}>{h.type}</span></td>
-                  <td>{h.coin}</td>
-                  <td className="num">{fmtCoin(h.amount)}</td>
-                  <td className="muted">{h.note || '—'}</td>
+                  {h.type === 'conversion' ? (
+                    <>
+                      <td><span className="pill pill-conversion">converted</span></td>
+                      <td>{h.from_coin} → {h.to_coin}</td>
+                      <td className="num">{fmtCoin(h.from_amount)} → {fmtCoin(h.to_amount)}</td>
+                      <td className="muted">—</td>
+                    </>
+                  ) : (
+                    <>
+                      <td><span className={`pill pill-${h.type}`}>{h.type}</span></td>
+                      <td>{h.coin}</td>
+                      <td className="num">{fmtCoin(h.amount)}</td>
+                      <td className="muted">{h.note || '—'}</td>
+                    </>
+                  )}
                   <td className="muted">{new Date(h.created_at).toLocaleDateString()}</td>
                 </tr>
               ))}
