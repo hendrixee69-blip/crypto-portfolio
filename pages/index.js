@@ -130,7 +130,7 @@ export default function Home() {
             <span className="label">Assets tracked</span>
           </div>
           <div className="glass-card stat-tile">
-            <span className="num" style={{ color: 'var(--accent)' }}>{prices ? gainers : '—'}</span>
+            <span className="num" style={{ color: 'var(--green)' }}>{prices ? gainers : '—'}</span>
             <span className="label">In the green (24h)</span>
           </div>
           <div className="glass-card stat-tile">
@@ -177,7 +177,7 @@ export default function Home() {
                       </div>
                     </td>
                     <td className="num">{fmtPrice(p?.usd)}</td>
-                    <td className="num" style={{ color: change >= 0 ? 'var(--accent)' : 'var(--danger)' }}>
+                    <td className="num" style={{ color: change >= 0 ? 'var(--green)' : 'var(--red)' }}>
                       {change !== undefined ? `${change >= 0 ? '+' : ''}${change.toFixed(2)}%` : '—'}
                     </td>
                     <td className="num muted">{p?.market_cap ? `$${fmtCompact(p.market_cap)}` : '—'}</td>
@@ -186,6 +186,10 @@ export default function Home() {
               })}
             </tbody>
           </table>
+        </div>
+
+        <div className="site-footer">
+          Need help? <a href="mailto:support@coinmy.online">support@coinmy.online</a>
         </div>
       </div>
     </>

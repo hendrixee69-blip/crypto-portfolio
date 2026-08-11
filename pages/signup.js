@@ -120,6 +120,9 @@ export default function Signup() {
           <a href="/">← Back to prices</a>
         </p>
       </div>
+      <div className="site-footer">
+        Need help? <a href="mailto:support@coinmy.online">support@coinmy.online</a>
+      </div>
     </div>
   );
 }

@@ -47,7 +47,7 @@ button {
   padding: 0 18px;
 }
 
-/* --- Ticker strip: a running price tape across the top, Coinbase-style --- */
+/* --- Ticker strip --- */
 .ticker-wrap {
   border-bottom: 1px solid var(--border);
   background: var(--bg-soft);
@@ -234,7 +234,7 @@ tbody tr:hover { background: var(--bg-soft); }
   color: var(--text-muted);
 }
 
-/* --- Homepage hero, Coinbase-style: light bg, big navy headline, blue CTA --- */
+/* --- Homepage hero --- */
 .hero {
   padding: 32px 0 24px;
   text-align: center;
@@ -301,7 +301,6 @@ tbody tr:hover { background: var(--bg-soft); }
 }
 .btn-gradient:hover { background: var(--accent-hover); }
 
-/* --- Glass card alias -> flat white card with shadow for the light theme --- */
 .glass-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -311,7 +310,7 @@ tbody tr:hover { background: var(--bg-soft); }
 }
 .glass-card + .glass-card { margin-top: 10px; }
 
-/* --- Coin logo + row polish --- */
+/* --- Coin logo: glossy 3D badge with sweeping shine --- */
 .coin-cell {
   display: flex;
   align-items: center;
@@ -337,7 +336,6 @@ tbody tr:hover { background: var(--bg-soft); }
   object-fit: cover;
   display: block;
 }
-/* Glossy highlight, like light hitting the top of a sphere — static, gives the 3D read */
 .coin-logo-wrap::before {
   content: '';
   position: absolute;
@@ -347,7 +345,6 @@ tbody tr:hover { background: var(--bg-soft); }
   pointer-events: none;
   z-index: 2;
 }
-/* Sweeping shine — a bright diagonal bar that travels across the badge on a loop */
 .coin-logo-wrap::after {
   content: '';
   position: absolute;
@@ -418,7 +415,7 @@ tbody tr:hover { background: var(--bg-soft); }
   margin-top: 2px;
 }
 
-/* --- Quick actions row: compact icon-over-label buttons, app-style --- */
+/* --- Quick actions row --- */
 .quick-actions {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -456,7 +453,7 @@ tbody tr:hover { background: var(--bg-soft); }
   .stat-strip { grid-template-columns: repeat(3, 1fr); }
 }
 
-/* --- Promo banners: dark, bold, Coinbase-style marketing cards --- */
+/* --- Promo banners --- */
 .promo-banner {
   background: linear-gradient(135deg, #0A0B0D 0%, #14163A 100%);
   border-radius: 16px;
@@ -550,4 +547,16 @@ tbody tr:hover { background: var(--bg-soft); }
   .promo-banner { flex-direction: column; text-align: center; }
   .promo-banner p { max-width: none; }
   .promo-strip { grid-template-columns: 1fr; }
+}
+
+/* --- Footer --- */
+.site-footer {
+  text-align: center;
+  padding: 24px 0 32px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.site-footer a {
+  color: var(--accent);
+  font-weight: 600;
 }
