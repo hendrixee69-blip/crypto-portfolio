@@ -32,8 +32,11 @@ export default function Dashboard({ username }) {
   const [prices, setPrices] = useState(null);
   const [error, setError] = useState('');
   const [addresses, setAddresses] = useState({});
-  const [depositStep, setDepositStep] = useState('closed'); // closed | picking | showing
+  const [depositStep, setDepositStep] = useState('closed'); // closed | picking | amount | showing
   const [selectedCoin, setSelectedCoin] = useState(null);
+  const [depositAmount, setDepositAmount] = useState('');
+  const [depositAmountBusy, setDepositAmountBusy] = useState(false);
+  const [depositAmountError, setDepositAmountError] = useState('');
   const [copied, setCopied] = useState(false);
   const [withdrawals, setWithdrawals] = useState([]);
   const [withdrawStep, setWithdrawStep] = useState('closed'); // closed | picking | form
@@ -111,18 +114,47 @@ export default function Dashboard({ username }) {
   function closeDeposit() {
     setDepositStep('closed');
     setSelectedCoin(null);
+    setDepositAmount('');
+    setDepositAmountError('');
     setCopied(false);
   }
 
   function pickCoin(coin) {
     setSelectedCoin(coin);
-    setDepositStep('showing');
+    setDepositStep('amount');
   }
 
   function backToPicking() {
     setDepositStep('picking');
     setSelectedCoin(null);
+    setDepositAmount('');
+    setDepositAmountError('');
     setCopied(false);
+  }
+
+  function backToAmount() {
+    setDepositStep('amount');
+    setCopied(false);
+  }
+
+  async function submitDepositAmount(e) {
+    e.preventDefault();
+    setDepositAmountError('');
+    setDepositAmountBusy(true);
+    try {
+      const res = await fetch('/api/deposit-intents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coin: selectedCoin, amount: depositAmount }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setDepositStep('showing');
+    } catch (err) {
+      setDepositAmountError(err.message);
+    } finally {
+      setDepositAmountBusy(false);
+    }
   }
 
   function copyAddress() {
@@ -340,11 +372,43 @@ export default function Dashboard({ username }) {
           </div>
         )}
 
+        {depositStep === 'amount' && selectedCoin && (
+          <div style={{ marginTop: 14, padding: 14, background: 'var(--bg-soft)', borderRadius: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>How much {selectedCoin}?</span>
+              <button className="btn btn-ghost" onClick={backToPicking}>← Back</button>
+            </div>
+            <form onSubmit={submitDepositAmount}>
+              <div className="field">
+                <label>Amount you plan to send ({selectedCoin})</label>
+                <input
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={depositAmount}
+                  onChange={(e) => setDepositAmount(e.target.value)}
+                  required
+                  autoFocus
+                />
+              </div>
+              {depositAmountError && <p className="error-text">{depositAmountError}</p>}
+              <p className="muted" style={{ fontSize: 12, marginBottom: 10 }}>
+                This lets the admin know what to expect — you'll see the deposit address next.
+              </p>
+              <button className="btn btn-primary" style={{ width: '100%' }} disabled={depositAmountBusy}>
+                {depositAmountBusy ? 'Continuing…' : 'Continue'}
+              </button>
+            </form>
+          </div>
+        )}
+
         {depositStep === 'showing' && selectedCoin && (
           <div style={{ marginTop: 14, padding: 14, background: 'var(--bg-soft)', borderRadius: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>Send {selectedCoin} to this address</span>
-              <button className="btn btn-ghost" onClick={backToPicking}>← Back</button>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>
+                Send {depositAmount ? `${depositAmount} ` : ''}{selectedCoin} to this address
+              </span>
+              <button className="btn btn-ghost" onClick={backToAmount}>← Back</button>
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <code className="num" style={{ fontSize: 12, wordBreak: 'break-all', flex: 1 }}>

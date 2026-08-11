@@ -36,9 +36,17 @@ export default function AdminPanel({ adminUsername }) {
   const [withdrawalRequests, setWithdrawalRequests] = useState([]);
   const [resolvingId, setResolvingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [depositIntents, setDepositIntents] = useState([]);
   const [setBalanceForm, setSetBalanceForm] = useState({ coin: 'BTC', target: '' });
   const [setBalanceBusy, setSetBalanceBusy] = useState(false);
   const [setBalanceMsg, setSetBalanceMsg] = useState('');
+
+  async function loadDepositIntents() {
+    const res = await fetch('/api/admin/deposit-intents');
+    if (res.status === 401) return;
+    const data = await res.json();
+    setDepositIntents(data.intents || []);
+  }
 
   async function loadUsers() {
     const res = await fetch('/api/admin/users');
@@ -61,7 +69,7 @@ export default function AdminPanel({ adminUsername }) {
     setWithdrawalRequests(data.requests || []);
   }
 
-  useEffect(() => { loadUsers(); loadSettings(); loadWithdrawalRequests(); }, []);
+  useEffect(() => { loadUsers(); loadSettings(); loadWithdrawalRequests(); loadDepositIntents(); }, []);
 
   async function loadLedger(userId) {
     setSelectedId(userId);
@@ -344,6 +352,32 @@ export default function AdminPanel({ adminUsername }) {
           </table>
         ) : (
           <p className="muted empty-state">No withdrawal requests yet.</p>
+        )}
+      </div>
+
+      <div className="card">
+        <h3>Deposit intents</h3>
+        <p className="muted" style={{ marginBottom: 12 }}>
+          What users have said they're about to send — informational only. Once you
+          see it actually land in your wallet, credit it via Record entry or Set
+          exact balance below.
+        </p>
+        {depositIntents.length ? (
+          <table>
+            <thead><tr><th>User</th><th>Coin</th><th>Amount</th><th>Date</th></tr></thead>
+            <tbody>
+              {depositIntents.map((d) => (
+                <tr key={d.id}>
+                  <td>{d.display_name} <span className="muted" style={{ fontSize: 12 }}>@{d.username}</span></td>
+                  <td><strong>{d.coin}</strong></td>
+                  <td className="num">{fmtCoin(d.amount)}</td>
+                  <td className="muted">{new Date(d.created_at).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="muted empty-state">No deposit intents yet.</p>
         )}
       </div>
 
