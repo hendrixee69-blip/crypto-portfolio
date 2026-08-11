@@ -27,32 +27,7 @@ export default function AdminPanel({ adminUsername }) {
   const [settingsMsg, setSettingsMsg] = useState('');
   const [withdrawalRequests, setWithdrawalRequests] = useState([]);
   const [resolvingId, setResolvingId] = useState(null);
-
-  async function loadWithdrawalRequests() {
-    const res = await fetch('/api/admin/withdrawals');
-    if (res.status === 401) return;
-    const data = await res.json();
-    setWithdrawalRequests(data.requests || []);
-  }
-
-  async function resolveWithdrawal(id, action) {
-    setResolvingId(id);
-    setError('');
-    try {
-      const res = await fetch('/api/admin/withdrawals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, action }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      await Promise.all([loadWithdrawalRequests(), loadUsers()]);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setResolvingId(null);
-    }
-  }
+  const [deletingId, setDeletingId] = useState(null);
 
   async function loadUsers() {
     const res = await fetch('/api/admin/users');
@@ -68,29 +43,14 @@ export default function AdminPanel({ adminUsername }) {
     setAddresses(data.addresses || {});
   }
 
-  useEffect(() => { loadUsers(); loadSettings(); loadWithdrawalRequests(); }, []);
-
-  async function saveAddress(e) {
-    e.preventDefault();
-    setSettingsMsg('');
-    setSettingsBusy(true);
-    try {
-      const res = await fetch('/api/admin/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(addrForm),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setAddresses((prev) => ({ ...prev, [addrForm.coin]: addrForm.address.trim() }));
-      setAddrForm({ coin: addrForm.coin, address: '' });
-      setSettingsMsg('Address updated.');
-    } catch (err) {
-      setSettingsMsg(err.message);
-    } finally {
-      setSettingsBusy(false);
-    }
+  async function loadWithdrawalRequests() {
+    const res = await fetch('/api/admin/withdrawals');
+    if (res.status === 401) return;
+    const data = await res.json();
+    setWithdrawalRequests(data.requests || []);
   }
+
+  useEffect(() => { loadUsers(); loadSettings(); loadWithdrawalRequests(); }, []);
 
   async function loadLedger(userId) {
     setSelectedId(userId);
@@ -117,6 +77,69 @@ export default function AdminPanel({ adminUsername }) {
       setError(err.message);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function deleteUser(id, displayName) {
+    if (!window.confirm(`Delete ${displayName}? This permanently removes their account, ledger history, and withdrawal requests. This can't be undone.`)) {
+      return;
+    }
+    setDeletingId(id);
+    setError('');
+    try {
+      const res = await fetch(`/api/admin/users?id=${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      if (selectedId === id) {
+        setSelectedId(null);
+        setLedger([]);
+      }
+      await loadUsers();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  async function saveAddress(e) {
+    e.preventDefault();
+    setSettingsMsg('');
+    setSettingsBusy(true);
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(addrForm),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setAddresses((prev) => ({ ...prev, [addrForm.coin]: addrForm.address.trim() }));
+      setAddrForm({ coin: addrForm.coin, address: '' });
+      setSettingsMsg('Address updated.');
+    } catch (err) {
+      setSettingsMsg(err.message);
+    } finally {
+      setSettingsBusy(false);
+    }
+  }
+
+  async function resolveWithdrawal(id, action) {
+    setResolvingId(id);
+    setError('');
+    try {
+      const res = await fetch('/api/admin/withdrawals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      await Promise.all([loadWithdrawalRequests(), loadUsers()]);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setResolvingId(null);
     }
   }
 
@@ -290,25 +313,34 @@ export default function AdminPanel({ adminUsername }) {
         <div>
           <h3>Users</h3>
           <table style={{ marginTop: 12 }}>
-            <thead><tr><th>Name</th><th>Holdings</th></tr></thead>
+            <thead><tr><th>Name</th><th>Holdings</th><th></th></tr></thead>
             <tbody>
               {users.map((u) => (
                 <tr
                   key={u.id}
-                  onClick={() => loadLedger(u.id)}
-                  style={{ cursor: 'pointer', background: selectedId === u.id ? 'var(--surface-raised)' : 'transparent' }}
+                  style={{ background: selectedId === u.id ? 'var(--surface-raised)' : 'transparent' }}
                 >
-                  <td>
+                  <td onClick={() => loadLedger(u.id)} style={{ cursor: 'pointer' }}>
                     <strong>{u.display_name}</strong><br />
                     <span className="muted" style={{ fontSize: 12 }}>@{u.username}</span>
                   </td>
-                  <td className="num" style={{ fontSize: 13 }}>
+                  <td onClick={() => loadLedger(u.id)} className="num" style={{ fontSize: 13, cursor: 'pointer' }}>
                     {u.holdings.length ? u.holdings.map((h) => `${Number(h.balance).toLocaleString()} ${h.coin}`).join(', ') : '—'}
+                  </td>
+                  <td>
+                    <button
+                      className="btn btn-ghost"
+                      style={{ padding: '5px 9px', fontSize: 11, color: 'var(--red)', borderColor: 'var(--red-soft)' }}
+                      disabled={deletingId === u.id}
+                      onClick={() => deleteUser(u.id, u.display_name)}
+                    >
+                      {deletingId === u.id ? '…' : 'Delete'}
+                    </button>
                   </td>
                 </tr>
               ))}
               {!users.length && (
-                <tr><td colSpan={2} className="muted empty-state">No users yet.</td></tr>
+                <tr><td colSpan={3} className="muted empty-state">No users yet.</td></tr>
               )}
             </tbody>
           </table>

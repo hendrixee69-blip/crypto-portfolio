@@ -47,5 +47,15 @@ module.exports = async function handler(req, res) {
     }
   }
 
+  if (req.method === 'DELETE') {
+    const { id } = req.query;
+    if (!id) return res.status(400).json({ error: 'id is required' });
+    // Cascades to that user's ledger entries and withdrawal requests too —
+    // both tables reference users.id with ON DELETE CASCADE.
+    const { rowCount } = await pool.query('DELETE FROM users WHERE id = $1', [id]);
+    if (rowCount === 0) return res.status(404).json({ error: 'User not found' });
+    return res.status(200).json({ ok: true });
+  }
+
   return res.status(405).json({ error: 'Method not allowed' });
 };
