@@ -60,6 +60,27 @@ export default function Dashboard({ username }) {
   const [convertError, setConvertError] = useState('');
   const [convertSuccess, setConvertSuccess] = useState(null);
   const [hideBalance, setHideBalance] = useState(false);
+  const [newRecoveryCode, setNewRecoveryCode] = useState(null);
+  const [recoveryBusy, setRecoveryBusy] = useState(false);
+  const [recoveryCopied, setRecoveryCopied] = useState(false);
+
+  async function generateRecoveryCode() {
+    setRecoveryBusy(true);
+    try {
+      const res = await fetch('/api/recovery-code', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) setNewRecoveryCode(data.recovery_code);
+    } finally {
+      setRecoveryBusy(false);
+    }
+  }
+
+  function copyRecoveryCode() {
+    if (!newRecoveryCode) return;
+    navigator.clipboard.writeText(newRecoveryCode);
+    setRecoveryCopied(true);
+    setTimeout(() => setRecoveryCopied(false), 2000);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -956,6 +977,34 @@ export default function Dashboard({ username }) {
           </table>
         </div>
       )}
+
+      <div className="card">
+        <h3>Security</h3>
+        <p className="muted" style={{ marginBottom: 12 }}>
+          Your recovery code lets you reset your password yourself if you forget it,
+          without needing the admin. Generating a new one replaces any old code —
+          it's shown once, so save it somewhere safe.
+        </p>
+        {newRecoveryCode ? (
+          <div>
+            <div style={{
+              background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 10,
+              padding: 14, textAlign: 'center', marginBottom: 10,
+            }}>
+              <code className="num" style={{ fontSize: 16, fontWeight: 700, letterSpacing: 1 }}>
+                {newRecoveryCode}
+              </code>
+            </div>
+            <button className="btn btn-ghost" onClick={copyRecoveryCode}>
+              {recoveryCopied ? 'Copied' : 'Copy code'}
+            </button>
+          </div>
+        ) : (
+          <button className="btn btn-primary" onClick={generateRecoveryCode} disabled={recoveryBusy}>
+            {recoveryBusy ? 'Generating…' : 'Generate recovery code'}
+          </button>
+        )}
+      </div>
 
       <div className="card">
         <h3>Recent activity</h3>

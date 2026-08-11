@@ -9,6 +9,9 @@ export default function Signup() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [recoveryCode, setRecoveryCode] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const [confirmedSaved, setConfirmedSaved] = useState(false);
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -28,12 +31,58 @@ export default function Signup() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Sign up failed');
-      router.push('/dashboard');
+      setRecoveryCode(data.recovery_code);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  }
+
+  function copyCode() {
+    if (!recoveryCode) return;
+    navigator.clipboard.writeText(recoveryCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  if (recoveryCode) {
+    return (
+      <div className="auth-shell">
+        <div className="auth-card card">
+          <div className="eyebrow">Account created</div>
+          <h1>Save your recovery code</h1>
+          <p className="muted" style={{ marginBottom: 16, lineHeight: 1.5 }}>
+            If you ever forget your password, you'll need this code (plus your
+            username) to set a new one yourself. It's shown only this once —
+            we don't store it in a readable form, so we can't show it to you again.
+          </p>
+          <div style={{
+            background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: 10,
+            padding: 16, textAlign: 'center', marginBottom: 12,
+          }}>
+            <code className="num" style={{ fontSize: 18, fontWeight: 700, letterSpacing: 1 }}>
+              {recoveryCode}
+            </code>
+          </div>
+          <button className="btn btn-ghost" style={{ width: '100%', marginBottom: 16 }} onClick={copyCode}>
+            {copied ? 'Copied' : 'Copy code'}
+          </button>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 16, cursor: 'pointer' }}>
+            <input type="checkbox" checked={confirmedSaved} onChange={(e) => setConfirmedSaved(e.target.checked)} />
+            I've saved this somewhere safe
+          </label>
+          <button
+            className="btn btn-primary"
+            style={{ width: '100%' }}
+            disabled={!confirmedSaved}
+            onClick={() => router.push('/dashboard')}
+          >
+            Continue to my portfolio
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

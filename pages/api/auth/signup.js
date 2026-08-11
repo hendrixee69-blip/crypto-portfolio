@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const { pool } = require('../../../lib/db');
 const { signToken, setAuthCookie } = require('../../../lib/auth');
+const { generateRecoveryCode } = require('../../../lib/recovery');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -17,15 +18,19 @@ module.exports = async function handler(req, res) {
   }
 
   const hash = await bcrypt.hash(password, 10);
+  const recoveryCode = generateRecoveryCode();
+  const recoveryHash = await bcrypt.hash(recoveryCode, 10);
   try {
     const { rows } = await pool.query(
-      'INSERT INTO users (username, password_hash, display_name) VALUES ($1, $2, $3) RETURNING id, username',
-      [username, hash, display_name]
+      'INSERT INTO users (username, password_hash, display_name, recovery_code_hash) VALUES ($1, $2, $3, $4) RETURNING id, username',
+      [username, hash, display_name, recoveryHash]
     );
     const user = rows[0];
     const token = signToken({ role: 'user', id: user.id, username: user.username });
     setAuthCookie(res, 'user_token', token);
-    return res.status(201).json({ ok: true });
+    // Only moment the plaintext code ever exists outside the user's own head —
+    // shown once here, never stored or retrievable again.
+    return res.status(201).json({ ok: true, recovery_code: recoveryCode });
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ error: 'That username is already taken' });
     throw err;
