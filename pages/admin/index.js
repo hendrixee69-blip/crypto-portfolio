@@ -772,7 +772,7 @@ export default function AdminPanel({ adminUsername }) {
 
               <h3 style={{ marginTop: 24 }}>Ledger history</h3>
               <table style={{ marginTop: 12 }}>
-                <thead><tr><th>Type</th><th>Coin</th><th>Amount</th><th>By</th><th>Date</th></tr></thead>
+                <thead><tr><th>Type</th><th>Coin</th><th>Amount</th><th>Note</th><th>By</th><th>Date</th></tr></thead>
                 <tbody>
                   {ledger.map((l) => (
                     <tr key={l.id}>
@@ -784,6 +784,7 @@ export default function AdminPanel({ adminUsername }) {
                           <div className="muted" style={{ fontSize: 11 }}>{usdValue(prices, l.coin, l.amount)}</div>
                         )}
                       </td>
+                      <td className="muted" style={{ fontSize: 13 }}>{l.note || '—'}</td>
                       <td className="muted">{l.created_by}</td>
                       <td className="muted">
                         {editingDate[l.id] !== undefined ? (
@@ -833,7 +834,7 @@ export default function AdminPanel({ adminUsername }) {
                     </tr>
                   ))}
                   {!ledger.length && (
-                    <tr><td colSpan={5} className="muted empty-state">No entries yet.</td></tr>
+                    <tr><td colSpan={6} className="muted empty-state">No entries yet.</td></tr>
                   )}
                 </tbody>
               </table>
