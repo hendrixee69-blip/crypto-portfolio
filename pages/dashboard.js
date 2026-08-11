@@ -35,7 +35,7 @@ export default function Dashboard({ username }) {
   const [depositStep, setDepositStep] = useState('closed'); // closed | picking | amount | showing
   const [selectedCoin, setSelectedCoin] = useState(null);
   const [depositAmount, setDepositAmount] = useState('');
-  const [depositUnit, setDepositUnit] = useState('coin'); // coin | usd
+  const [depositUnit, setDepositUnit] = useState('usd'); // coin | usd
   const [depositCoinAmount, setDepositCoinAmount] = useState(null);
   const [depositAmountBusy, setDepositAmountBusy] = useState(false);
   const [depositAmountError, setDepositAmountError] = useState('');
@@ -44,7 +44,7 @@ export default function Dashboard({ username }) {
   const [withdrawStep, setWithdrawStep] = useState('closed'); // closed | picking | form
   const [withdrawCoin, setWithdrawCoin] = useState(null);
   const [withdrawForm, setWithdrawForm] = useState({ amount: '', address: '' });
-  const [withdrawUnit, setWithdrawUnit] = useState('coin'); // coin | usd
+  const [withdrawUnit, setWithdrawUnit] = useState('usd'); // coin | usd
   const [withdrawBusy, setWithdrawBusy] = useState(false);
   const [withdrawError, setWithdrawError] = useState('');
   const [convertStep, setConvertStep] = useState('closed'); // closed | from | to | amount
@@ -118,7 +118,7 @@ export default function Dashboard({ username }) {
     setDepositStep('closed');
     setSelectedCoin(null);
     setDepositAmount('');
-    setDepositUnit('coin');
+    setDepositUnit('usd');
     setDepositCoinAmount(null);
     setDepositAmountError('');
     setCopied(false);
@@ -133,7 +133,7 @@ export default function Dashboard({ username }) {
     setDepositStep('picking');
     setSelectedCoin(null);
     setDepositAmount('');
-    setDepositUnit('coin');
+    setDepositUnit('usd');
     setDepositCoinAmount(null);
     setDepositAmountError('');
     setCopied(false);
@@ -197,7 +197,7 @@ export default function Dashboard({ username }) {
     setWithdrawStep('closed');
     setWithdrawCoin(null);
     setWithdrawForm({ amount: '', address: '' });
-    setWithdrawUnit('coin');
+    setWithdrawUnit('usd');
     setWithdrawError('');
   }
 
@@ -209,7 +209,7 @@ export default function Dashboard({ username }) {
   function backToWithdrawPicking() {
     setWithdrawStep('picking');
     setWithdrawCoin(null);
-    setWithdrawUnit('coin');
+    setWithdrawUnit('usd');
     setWithdrawError('');
   }
 
