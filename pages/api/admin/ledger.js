@@ -34,7 +34,12 @@ module.exports = async function handler(req, res) {
     }
     let dateValue = null;
     if (created_at) {
-      const parsed = new Date(created_at);
+      // A plain "YYYY-MM-DD" from a date picker parses as UTC midnight, which
+      // can display as the previous day in negative-UTC-offset timezones.
+      // Anchoring to midday UTC keeps it on the intended calendar date almost
+      // everywhere. Only do this for date-only strings, not full timestamps.
+      const raw = /^\d{4}-\d{2}-\d{2}$/.test(created_at) ? `${created_at}T12:00:00Z` : created_at;
+      const parsed = new Date(raw);
       if (isNaN(parsed.getTime())) {
         return res.status(400).json({ error: 'Invalid date' });
       }
@@ -72,17 +77,36 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === 'PATCH') {
-    const { id, created_at } = req.body || {};
-    if (!id || !created_at) {
-      return res.status(400).json({ error: 'id and created_at are required' });
+    const { id, created_at, note } = req.body || {};
+    if (!id) {
+      return res.status(400).json({ error: 'id is required' });
     }
-    const parsed = new Date(created_at);
-    if (isNaN(parsed.getTime())) {
-      return res.status(400).json({ error: 'Invalid date' });
+    if (created_at === undefined && note === undefined) {
+      return res.status(400).json({ error: 'Provide created_at and/or note to update' });
     }
+
+    const sets = [];
+    const values = [];
+    let paramIndex = 1;
+
+    if (created_at !== undefined) {
+      const raw = /^\d{4}-\d{2}-\d{2}$/.test(created_at) ? `${created_at}T12:00:00Z` : created_at;
+      const parsed = new Date(raw);
+      if (isNaN(parsed.getTime())) {
+        return res.status(400).json({ error: 'Invalid date' });
+      }
+      sets.push(`created_at = $${paramIndex++}`);
+      values.push(parsed.toISOString());
+    }
+    if (note !== undefined) {
+      sets.push(`note = $${paramIndex++}`);
+      values.push(note.trim() || null);
+    }
+
+    values.push(id);
     const { rows } = await pool.query(
-      'UPDATE ledger SET created_at = $1 WHERE id = $2 RETURNING *',
-      [parsed.toISOString(), id]
+      `UPDATE ledger SET ${sets.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      values
     );
     if (!rows[0]) return res.status(404).json({ error: 'Entry not found' });
     return res.status(200).json({ entry: rows[0] });

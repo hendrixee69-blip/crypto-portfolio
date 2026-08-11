@@ -41,6 +41,8 @@ export default function AdminPanel({ adminUsername }) {
   const [newUser, setNewUser] = useState({ username: '', password: '', display_name: '' });
   const [entry, setEntry] = useState({ type: 'deposit', coin: 'BTC', amount: '', note: '', created_at: '' });
   const [editingDate, setEditingDate] = useState({});
+  const [editingNote, setEditingNote] = useState({});
+  const [savingNoteId, setSavingNoteId] = useState(null);
   const [savingDateId, setSavingDateId] = useState(null);
   const [addresses, setAddresses] = useState({});
   const [addrForm, setAddrForm] = useState({ coin: 'BTC', address: '' });
@@ -291,6 +293,31 @@ export default function AdminPanel({ adminUsername }) {
       setError(err.message);
     } finally {
       setSavingDateId(null);
+    }
+  }
+
+  async function saveEntryNote(id) {
+    const newNote = editingNote[id] ?? '';
+    setSavingNoteId(id);
+    setError('');
+    try {
+      const res = await fetch('/api/admin/ledger', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, note: newNote }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setEditingNote((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      await loadLedger(selectedId);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingNoteId(null);
     }
   }
 
@@ -784,7 +811,49 @@ export default function AdminPanel({ adminUsername }) {
                           <div className="muted" style={{ fontSize: 11 }}>{usdValue(prices, l.coin, l.amount)}</div>
                         )}
                       </td>
-                      <td className="muted" style={{ fontSize: 13 }}>{l.note || '—'}</td>
+                      <td className="muted" style={{ fontSize: 13, minWidth: 140 }}>
+                        {editingNote[l.id] !== undefined ? (
+                          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                            <input
+                              type="text"
+                              value={editingNote[l.id]}
+                              onChange={(e) => setEditingNote((prev) => ({ ...prev, [l.id]: e.target.value }))}
+                              placeholder="Note"
+                              style={{
+                                fontSize: 12, padding: '4px 6px', border: '1px solid var(--border)',
+                                borderRadius: 6, width: 130,
+                              }}
+                            />
+                            <button
+                              className="btn btn-primary"
+                              style={{ padding: '4px 8px', fontSize: 11 }}
+                              disabled={savingNoteId === l.id}
+                              onClick={() => saveEntryNote(l.id)}
+                            >
+                              {savingNoteId === l.id ? '…' : 'Save'}
+                            </button>
+                            <button
+                              className="btn btn-ghost"
+                              style={{ padding: '4px 8px', fontSize: 11 }}
+                              onClick={() => setEditingNote((prev) => {
+                                const next = { ...prev };
+                                delete next[l.id];
+                                return next;
+                              })}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <span
+                            style={{ cursor: 'pointer', borderBottom: '1px dashed var(--text-muted)' }}
+                            onClick={() => setEditingNote((prev) => ({ ...prev, [l.id]: l.note || '' }))}
+                            title="Click to add or edit a note"
+                          >
+                            {l.note || '—'}
+                          </span>
+                        )}
+                      </td>
                       <td className="muted">{l.created_by}</td>
                       <td className="muted">
                         {editingDate[l.id] !== undefined ? (
