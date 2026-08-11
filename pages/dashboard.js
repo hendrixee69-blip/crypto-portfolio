@@ -26,6 +26,10 @@ function fmtCoin(n) {
   return Number(n).toLocaleString(undefined, { maximumFractionDigits: 8 });
 }
 
+// Fixed palette so each coin's allocation slice/legend dot stays a
+// consistent color across renders, indexed by position in COINS.
+const ALLOCATION_COLORS = ['#0052FF', '#F7931A', '#627EEA', '#26A17B', '#05B169', '#9B6BFF', '#F2A93B', '#CF1124'];
+
 export default function Dashboard({ username }) {
   const router = useRouter();
   const [portfolio, setPortfolio] = useState(null);
@@ -55,6 +59,7 @@ export default function Dashboard({ username }) {
   const [convertBusy, setConvertBusy] = useState(false);
   const [convertError, setConvertError] = useState('');
   const [convertSuccess, setConvertSuccess] = useState(null);
+  const [hideBalance, setHideBalance] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -368,18 +373,27 @@ export default function Dashboard({ username }) {
 
       <div className="card">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <div className="eyebrow" style={{ margin: 0 }}>Portfolio value</div>
+          <div className="eyebrow" style={{ margin: 0 }}>Est. Total Value</div>
           <span className="hero-badge" style={{ margin: 0, padding: '3px 9px', fontSize: 10 }}>
             <span className="pulse" /> Live
           </span>
+          <button
+            onClick={() => setHideBalance((v) => !v)}
+            aria-label={hideBalance ? 'Show balance' : 'Hide balance'}
+            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 14, padding: 0, marginLeft: 'auto' }}
+          >
+            {hideBalance ? '🙈' : '👁'}
+          </button>
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
           <h1 className="num" style={{ margin: 0 }}>
-            {totalValue !== undefined
-              ? totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-              : '—'}
+            {hideBalance
+              ? '••••••'
+              : totalValue !== undefined
+                ? totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+                : '—'}
           </h1>
-          {portfolioChangePct !== null && (
+          {!hideBalance && portfolioChangePct !== null && (
             <span
               className="num"
               style={{
@@ -401,11 +415,11 @@ export default function Dashboard({ username }) {
 
         {depositStep === 'closed' && withdrawStep === 'closed' && convertStep === 'closed' && (
           <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-            {Object.keys(addresses).length > 0 && (
-              <button className="btn btn-primary" onClick={openDeposit}>Deposit</button>
-            )}
             {portfolio?.holdings?.length > 0 && (
-              <button className="btn btn-ghost" onClick={openWithdraw}>Withdraw</button>
+              <button className="btn btn-ghost" style={{ flex: 1, minWidth: 100 }} onClick={openWithdraw}>Take Out</button>
+            )}
+            {Object.keys(addresses).length > 0 && (
+              <button className="btn btn-primary" style={{ flex: 1, minWidth: 100 }} onClick={openDeposit}>Add Funds</button>
             )}
             {portfolio?.holdings?.length > 0 && (
               <button className="btn btn-ghost" onClick={openConvert}>Convert</button>
@@ -782,6 +796,59 @@ export default function Dashboard({ username }) {
         })()}
       </div>
 
+      {(() => {
+        if (!portfolio?.holdings?.length || !prices) return null;
+        const rows = portfolio.holdings
+          .map((h) => {
+            const coin = BY_SYMBOL[h.coin];
+            const price = prices?.[coin?.id]?.usd || 0;
+            return { coin: h.coin, value: Number(h.balance) * price };
+          })
+          .filter((r) => r.value > 0)
+          .sort((a, b) => b.value - a.value);
+        const sumValue = rows.reduce((s, r) => s + r.value, 0);
+        if (!sumValue) return null;
+
+        let cumulative = 0;
+        const segments = rows.map((r, i) => {
+          const pct = (r.value / sumValue) * 100;
+          const start = cumulative;
+          cumulative += pct;
+          return { ...r, pct, start, end: cumulative, color: ALLOCATION_COLORS[i % ALLOCATION_COLORS.length] };
+        });
+        const gradient = segments.map((s) => `${s.color} ${s.start}% ${s.end}%`).join(', ');
+
+        return (
+          <div className="card">
+            <h3>Allocation</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginTop: 12, flexWrap: 'wrap' }}>
+              <div
+                style={{
+                  width: 120, height: 120, borderRadius: '50%', flexShrink: 0,
+                  background: `conic-gradient(${gradient})`,
+                  position: 'relative',
+                }}
+              >
+                <div style={{
+                  position: 'absolute', inset: 22, borderRadius: '50%', background: 'var(--surface)',
+                }} />
+              </div>
+              <div style={{ flex: 1, minWidth: 160 }}>
+                {segments.map((s) => (
+                  <div key={s.coin} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0' }}>
+                    <span style={{ width: 9, height: 9, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{s.coin}</span>
+                    <span className="num muted" style={{ fontSize: 13 }}>
+                      {s.pct < 0.01 ? '<0.01' : s.pct.toFixed(2)}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="card">
         <h3>Markets</h3>
         <p className="muted" style={{ marginBottom: 4 }}>Live prices, updates automatically.</p>
@@ -818,24 +885,42 @@ export default function Dashboard({ username }) {
       <div className="card">
         <h3>Holdings</h3>
         {portfolio?.holdings?.length ? (
-          <table style={{ marginTop: 12 }}>
-            <thead>
-              <tr><th>Asset</th><th>Amount</th><th>Value</th></tr>
-            </thead>
-            <tbody>
-              {portfolio.holdings.map((h) => {
-                const coin = BY_SYMBOL[h.coin];
-                const price = prices?.[coin?.id]?.usd || 0;
-                return (
-                  <tr key={h.coin}>
-                    <td><strong>{h.coin}</strong></td>
-                    <td className="num">{fmtCoin(h.balance)}</td>
-                    <td className="num">{fmtPrice(Number(h.balance) * price)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div style={{ marginTop: 8 }}>
+            {portfolio.holdings.map((h) => {
+              const coin = BY_SYMBOL[h.coin];
+              const price = prices?.[coin?.id]?.usd || 0;
+              const p = prices?.[coin?.id];
+              return (
+                <div
+                  key={h.coin}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0',
+                    borderBottom: '1px solid var(--border)',
+                  }}
+                >
+                  {p?.image ? (
+                    <span className="coin-logo-wrap" style={{ width: 36, height: 36 }}>
+                      <img src={p.image} alt={coin?.name} className="coin-logo-img" />
+                    </span>
+                  ) : (
+                    <span className="coin-logo-wrap" style={{ width: 36, height: 36 }} />
+                  )}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{coin?.name || h.coin}</div>
+                    <div className="muted" style={{ fontSize: 12 }}>{h.coin}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div className="num" style={{ fontWeight: 700, fontSize: 14 }}>
+                      {hideBalance ? '••••' : fmtCoin(h.balance)}
+                    </div>
+                    <div className="num muted" style={{ fontSize: 12 }}>
+                      {hideBalance ? '••••' : fmtPrice(Number(h.balance) * price)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ) : (
           <p className="muted empty-state">No holdings yet. Your admin will record deposits here.</p>
         )}
