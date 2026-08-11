@@ -541,7 +541,18 @@ export default function Dashboard({ username }) {
           </div>
         )}
 
-        {withdrawStep === 'form' && withdrawCoin && (
+        {withdrawStep === 'form' && withdrawCoin && (() => {
+          const holding = portfolio.holdings.find((h) => h.coin === withdrawCoin);
+          const available = holding ? Number(holding.balance) : 0;
+          const price = prices?.[BY_SYMBOL[withdrawCoin]?.id]?.usd;
+          function setMax() {
+            if (withdrawUnit === 'usd') {
+              if (price) setWithdrawForm({ ...withdrawForm, amount: String(available * price) });
+            } else {
+              setWithdrawForm({ ...withdrawForm, amount: String(available) });
+            }
+          }
+          return (
           <div style={{ marginTop: 14, padding: 14, background: 'var(--bg-soft)', borderRadius: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <span style={{ fontSize: 13, fontWeight: 600 }}>Withdraw {withdrawCoin}</span>
@@ -577,7 +588,20 @@ export default function Dashboard({ username }) {
             </div>
             <form onSubmit={submitWithdrawal}>
               <div className="field">
-                <label>{withdrawUnit === 'usd' ? 'Amount in USD' : `Amount (${withdrawCoin})`}</label>
+                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>{withdrawUnit === 'usd' ? 'Amount in USD' : `Amount (${withdrawCoin})`}</span>
+                  <button
+                    type="button"
+                    onClick={setMax}
+                    disabled={withdrawUnit === 'usd' && !price}
+                    style={{
+                      fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100,
+                      border: '1px solid var(--accent)', background: 'var(--accent-soft)', color: 'var(--accent)',
+                    }}
+                  >
+                    Max
+                  </button>
+                </label>
                 <input
                   type="number"
                   step="any"
@@ -610,7 +634,8 @@ export default function Dashboard({ username }) {
               </button>
             </form>
           </div>
-        )}
+          );
+        })()}
 
         {convertStep === 'from' && (
           <div style={{ marginTop: 14 }}>
@@ -703,8 +728,27 @@ export default function Dashboard({ username }) {
               </div>
               <form onSubmit={submitConvert}>
                 <div className="field">
-                  <label>
-                    {convertUnit === 'usd' ? 'Amount in USD' : `Amount (${convertFrom})`} — {fmtCoin(available)} {convertFrom} available
+                  <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>
+                      {convertUnit === 'usd' ? 'Amount in USD' : `Amount (${convertFrom})`} — {fmtCoin(available)} {convertFrom} available
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (convertUnit === 'usd') {
+                          if (fromPrice) setConvertAmount(String(available * fromPrice));
+                        } else {
+                          setConvertAmount(String(available));
+                        }
+                      }}
+                      disabled={convertUnit === 'usd' && !fromPrice}
+                      style={{
+                        fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100, flexShrink: 0,
+                        border: '1px solid var(--accent)', background: 'var(--accent-soft)', color: 'var(--accent)',
+                      }}
+                    >
+                      Max
+                    </button>
                   </label>
                   <input
                     type="number"
