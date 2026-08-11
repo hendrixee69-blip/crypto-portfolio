@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { pool } = require('../../lib/db');
 const { requireRole } = require('../../lib/auth');
 const { BY_SYMBOL } = require('../../lib/coins');
@@ -34,8 +35,6 @@ module.exports = async function handler(req, res) {
   try {
     await client.query('BEGIN');
 
-    // Available balance = confirmed ledger balance minus anything already
-    // tied up in a pending withdrawal request, same rule as withdrawals.
     const { rows: balRows } = await client.query(
       `SELECT COALESCE(SUM(CASE WHEN type = 'deposit' THEN amount
                                  WHEN type = 'withdrawal' THEN -amount
@@ -66,16 +65,21 @@ module.exports = async function handler(req, res) {
 
     const usdValue = numericAmount * fromPrice;
     const convertedAmount = usdValue / toPrice;
+    // Both legs of the conversion share this id so the user's activity feed
+    // can present them as one combined "conversion" row instead of a
+    // separate deposit and withdrawal — visible_to_user=false keeps them
+    // out of the generic list; the portfolio API re-assembles them by group.
+    const conversionGroup = crypto.randomUUID();
 
     await client.query(
-      `INSERT INTO ledger (user_id, type, coin, amount, note, created_by)
-       VALUES ($1, 'withdrawal', $2, $3, $4, $5)`,
-      [session.id, from_coin, numericAmount, `Converted to ${to_coin}`, session.username]
+      `INSERT INTO ledger (user_id, type, coin, amount, note, created_by, visible_to_user, conversion_group)
+       VALUES ($1, 'withdrawal', $2, $3, $4, $5, false, $6)`,
+      [session.id, from_coin, numericAmount, `Converted to ${to_coin}`, session.username, conversionGroup]
     );
     await client.query(
-      `INSERT INTO ledger (user_id, type, coin, amount, note, created_by)
-       VALUES ($1, 'deposit', $2, $3, $4, $5)`,
-      [session.id, to_coin, convertedAmount, `Converted from ${from_coin}`, session.username]
+      `INSERT INTO ledger (user_id, type, coin, amount, note, created_by, visible_to_user, conversion_group)
+       VALUES ($1, 'deposit', $2, $3, $4, $5, false, $6)`,
+      [session.id, to_coin, convertedAmount, `Converted from ${from_coin}`, session.username, conversionGroup]
     );
 
     await client.query('COMMIT');
