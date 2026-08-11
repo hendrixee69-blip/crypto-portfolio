@@ -35,6 +35,8 @@ export default function Dashboard({ username }) {
   const [depositStep, setDepositStep] = useState('closed'); // closed | picking | amount | showing
   const [selectedCoin, setSelectedCoin] = useState(null);
   const [depositAmount, setDepositAmount] = useState('');
+  const [depositUnit, setDepositUnit] = useState('coin'); // coin | usd
+  const [depositCoinAmount, setDepositCoinAmount] = useState(null);
   const [depositAmountBusy, setDepositAmountBusy] = useState(false);
   const [depositAmountError, setDepositAmountError] = useState('');
   const [copied, setCopied] = useState(false);
@@ -42,6 +44,7 @@ export default function Dashboard({ username }) {
   const [withdrawStep, setWithdrawStep] = useState('closed'); // closed | picking | form
   const [withdrawCoin, setWithdrawCoin] = useState(null);
   const [withdrawForm, setWithdrawForm] = useState({ amount: '', address: '' });
+  const [withdrawUnit, setWithdrawUnit] = useState('coin'); // coin | usd
   const [withdrawBusy, setWithdrawBusy] = useState(false);
   const [withdrawError, setWithdrawError] = useState('');
   const [convertStep, setConvertStep] = useState('closed'); // closed | from | to | amount
@@ -115,6 +118,8 @@ export default function Dashboard({ username }) {
     setDepositStep('closed');
     setSelectedCoin(null);
     setDepositAmount('');
+    setDepositUnit('coin');
+    setDepositCoinAmount(null);
     setDepositAmountError('');
     setCopied(false);
   }
@@ -128,6 +133,8 @@ export default function Dashboard({ username }) {
     setDepositStep('picking');
     setSelectedCoin(null);
     setDepositAmount('');
+    setDepositUnit('coin');
+    setDepositCoinAmount(null);
     setDepositAmountError('');
     setCopied(false);
   }
@@ -140,15 +147,33 @@ export default function Dashboard({ username }) {
   async function submitDepositAmount(e) {
     e.preventDefault();
     setDepositAmountError('');
+
+    const price = prices?.[BY_SYMBOL[selectedCoin]?.id]?.usd;
+    let coinAmount;
+    if (depositUnit === 'usd') {
+      if (!price) {
+        setDepositAmountError('Live price unavailable right now — try again in a moment, or switch to entering the coin amount directly.');
+        return;
+      }
+      coinAmount = Number(depositAmount) / price;
+    } else {
+      coinAmount = Number(depositAmount);
+    }
+    if (!(coinAmount > 0)) {
+      setDepositAmountError('Enter a valid amount');
+      return;
+    }
+
     setDepositAmountBusy(true);
     try {
       const res = await fetch('/api/deposit-intents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ coin: selectedCoin, amount: depositAmount }),
+        body: JSON.stringify({ coin: selectedCoin, amount: coinAmount }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      setDepositCoinAmount(coinAmount);
       setDepositStep('showing');
     } catch (err) {
       setDepositAmountError(err.message);
@@ -172,6 +197,7 @@ export default function Dashboard({ username }) {
     setWithdrawStep('closed');
     setWithdrawCoin(null);
     setWithdrawForm({ amount: '', address: '' });
+    setWithdrawUnit('coin');
     setWithdrawError('');
   }
 
@@ -183,12 +209,30 @@ export default function Dashboard({ username }) {
   function backToWithdrawPicking() {
     setWithdrawStep('picking');
     setWithdrawCoin(null);
+    setWithdrawUnit('coin');
     setWithdrawError('');
   }
 
   async function submitWithdrawal(e) {
     e.preventDefault();
     setWithdrawError('');
+
+    const price = prices?.[BY_SYMBOL[withdrawCoin]?.id]?.usd;
+    let coinAmount;
+    if (withdrawUnit === 'usd') {
+      if (!price) {
+        setWithdrawError('Live price unavailable right now — try again in a moment, or switch to entering the coin amount directly.');
+        return;
+      }
+      coinAmount = Number(withdrawForm.amount) / price;
+    } else {
+      coinAmount = Number(withdrawForm.amount);
+    }
+    if (!(coinAmount > 0)) {
+      setWithdrawError('Enter a valid amount');
+      return;
+    }
+
     setWithdrawBusy(true);
     try {
       const res = await fetch('/api/withdrawals', {
@@ -196,7 +240,7 @@ export default function Dashboard({ username }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           coin: withdrawCoin,
-          amount: withdrawForm.amount,
+          amount: coinAmount,
           destination_address: withdrawForm.address,
         }),
       });
@@ -378,9 +422,39 @@ export default function Dashboard({ username }) {
               <span style={{ fontSize: 13, fontWeight: 600 }}>How much {selectedCoin}?</span>
               <button className="btn btn-ghost" onClick={backToPicking}>← Back</button>
             </div>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+              <button
+                type="button"
+                className="btn"
+                style={{
+                  fontSize: 12, padding: '6px 12px',
+                  background: depositUnit === 'coin' ? 'var(--accent)' : 'var(--bg)',
+                  color: depositUnit === 'coin' ? '#fff' : 'var(--text)',
+                  border: '1px solid var(--border)',
+                }}
+                onClick={() => { setDepositUnit('coin'); setDepositAmount(''); }}
+              >
+                {selectedCoin}
+              </button>
+              <button
+                type="button"
+                className="btn"
+                style={{
+                  fontSize: 12, padding: '6px 12px',
+                  background: depositUnit === 'usd' ? 'var(--accent)' : 'var(--bg)',
+                  color: depositUnit === 'usd' ? '#fff' : 'var(--text)',
+                  border: '1px solid var(--border)',
+                }}
+                onClick={() => { setDepositUnit('usd'); setDepositAmount(''); }}
+              >
+                USD
+              </button>
+            </div>
             <form onSubmit={submitDepositAmount}>
               <div className="field">
-                <label>Amount you plan to send ({selectedCoin})</label>
+                <label>
+                  {depositUnit === 'usd' ? 'Amount in USD' : `Amount you plan to send (${selectedCoin})`}
+                </label>
                 <input
                   type="number"
                   step="any"
@@ -391,6 +465,11 @@ export default function Dashboard({ username }) {
                   autoFocus
                 />
               </div>
+              {depositUnit === 'usd' && depositAmount && prices?.[BY_SYMBOL[selectedCoin]?.id]?.usd && (
+                <p className="muted num" style={{ fontSize: 13, marginTop: -8, marginBottom: 12 }}>
+                  ≈ {fmtCoin(Number(depositAmount) / prices[BY_SYMBOL[selectedCoin].id].usd)} {selectedCoin}
+                </p>
+              )}
               {depositAmountError && <p className="error-text">{depositAmountError}</p>}
               <p className="muted" style={{ fontSize: 12, marginBottom: 10 }}>
                 This lets the admin know what to expect — you'll see the deposit address next.
@@ -406,7 +485,7 @@ export default function Dashboard({ username }) {
           <div style={{ marginTop: 14, padding: 14, background: 'var(--bg-soft)', borderRadius: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <span style={{ fontSize: 13, fontWeight: 600 }}>
-                Send {depositAmount ? `${depositAmount} ` : ''}{selectedCoin} to this address
+                Send {depositCoinAmount !== null ? `${fmtCoin(depositCoinAmount)} ` : ''}{selectedCoin} to this address
               </span>
               <button className="btn btn-ghost" onClick={backToAmount}>← Back</button>
             </div>
@@ -449,9 +528,37 @@ export default function Dashboard({ username }) {
               <span style={{ fontSize: 13, fontWeight: 600 }}>Withdraw {withdrawCoin}</span>
               <button className="btn btn-ghost" onClick={backToWithdrawPicking}>← Back</button>
             </div>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+              <button
+                type="button"
+                className="btn"
+                style={{
+                  fontSize: 12, padding: '6px 12px',
+                  background: withdrawUnit === 'coin' ? 'var(--accent)' : 'var(--bg)',
+                  color: withdrawUnit === 'coin' ? '#fff' : 'var(--text)',
+                  border: '1px solid var(--border)',
+                }}
+                onClick={() => { setWithdrawUnit('coin'); setWithdrawForm({ ...withdrawForm, amount: '' }); }}
+              >
+                {withdrawCoin}
+              </button>
+              <button
+                type="button"
+                className="btn"
+                style={{
+                  fontSize: 12, padding: '6px 12px',
+                  background: withdrawUnit === 'usd' ? 'var(--accent)' : 'var(--bg)',
+                  color: withdrawUnit === 'usd' ? '#fff' : 'var(--text)',
+                  border: '1px solid var(--border)',
+                }}
+                onClick={() => { setWithdrawUnit('usd'); setWithdrawForm({ ...withdrawForm, amount: '' }); }}
+              >
+                USD
+              </button>
+            </div>
             <form onSubmit={submitWithdrawal}>
               <div className="field">
-                <label>Amount ({withdrawCoin})</label>
+                <label>{withdrawUnit === 'usd' ? 'Amount in USD' : `Amount (${withdrawCoin})`}</label>
                 <input
                   type="number"
                   step="any"
@@ -461,6 +568,11 @@ export default function Dashboard({ username }) {
                   required
                 />
               </div>
+              {withdrawUnit === 'usd' && withdrawForm.amount && prices?.[BY_SYMBOL[withdrawCoin]?.id]?.usd && (
+                <p className="muted num" style={{ fontSize: 13, marginTop: -8, marginBottom: 12 }}>
+                  ≈ {fmtCoin(Number(withdrawForm.amount) / prices[BY_SYMBOL[withdrawCoin].id].usd)} {withdrawCoin}
+                </p>
+              )}
               <div className="field">
                 <label>Destination {withdrawCoin} address</label>
                 <input
