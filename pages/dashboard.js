@@ -19,6 +19,13 @@ function fmtPrice(n) {
     : `$${n.toFixed(4)}`;
 }
 
+// Default toLocaleString() caps at 3 decimal places, which silently rounds
+// small crypto amounts like 0.00017 BTC down to "0". Coin amounts need more
+// room — up to 8 decimals — while still trimming trailing zeros.
+function fmtCoin(n) {
+  return Number(n).toLocaleString(undefined, { maximumFractionDigits: 8 });
+}
+
 export default function Dashboard({ username }) {
   const router = useRouter();
   const [portfolio, setPortfolio] = useState(null);
@@ -469,7 +476,7 @@ export default function Dashboard({ username }) {
               </div>
               <form onSubmit={submitConvert}>
                 <div className="field">
-                  <label>Amount ({convertFrom}) — {available.toLocaleString()} available</label>
+                  <label>Amount ({convertFrom}) — {fmtCoin(available)} available</label>
                   <input
                     type="number"
                     step="any"
@@ -544,7 +551,7 @@ export default function Dashboard({ username }) {
                 return (
                   <tr key={h.coin}>
                     <td><strong>{h.coin}</strong></td>
-                    <td className="num">{Number(h.balance).toLocaleString()}</td>
+                    <td className="num">{fmtCoin(h.balance)}</td>
                     <td className="num">{fmtPrice(Number(h.balance) * price)}</td>
                   </tr>
                 );
@@ -567,7 +574,7 @@ export default function Dashboard({ username }) {
               {withdrawals.map((w) => (
                 <tr key={w.id}>
                   <td><strong>{w.coin}</strong></td>
-                  <td className="num">{Number(w.amount).toLocaleString()}</td>
+                  <td className="num">{fmtCoin(w.amount)}</td>
                   <td>
                     <span
                       className="pill"
@@ -599,7 +606,7 @@ export default function Dashboard({ username }) {
                 <tr key={i}>
                   <td><span className={`pill pill-${h.type}`}>{h.type}</span></td>
                   <td>{h.coin}</td>
-                  <td className="num">{Number(h.amount).toLocaleString()}</td>
+                  <td className="num">{fmtCoin(h.amount)}</td>
                   <td className="muted">{h.note || '—'}</td>
                   <td className="muted">{new Date(h.created_at).toLocaleDateString()}</td>
                 </tr>

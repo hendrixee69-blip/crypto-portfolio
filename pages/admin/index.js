@@ -3,6 +3,14 @@ import { useRouter } from 'next/router';
 import { requireRole } from '../../lib/auth';
 import { COINS } from '../../lib/coins';
 
+// Default toLocaleString() caps at 3 decimal places, which silently rounds
+// small crypto amounts like 0.00017 BTC down to "0". Coin amounts need more
+// room — up to 8 decimals, same precision Bitcoin itself uses — while still
+// trimming trailing zeros so whole numbers don't show a wall of zeros.
+function fmtCoin(n) {
+  return Number(n).toLocaleString(undefined, { maximumFractionDigits: 8 });
+}
+
 export async function getServerSideProps({ req }) {
   const session = requireRole(req, 'admin');
   if (!session) {
@@ -295,7 +303,7 @@ export default function AdminPanel({ adminUsername }) {
                 <tr key={r.id}>
                   <td>{r.display_name} <span className="muted" style={{ fontSize: 12 }}>@{r.username}</span></td>
                   <td><strong>{r.coin}</strong></td>
-                  <td className="num">{Number(r.amount).toLocaleString()}</td>
+                  <td className="num">{fmtCoin(r.amount)}</td>
                   <td className="num muted" style={{ fontSize: 12, maxWidth: 160, wordBreak: 'break-all' }}>{r.destination_address}</td>
                   <td>
                     <span
@@ -355,7 +363,7 @@ export default function AdminPanel({ adminUsername }) {
                     <span className="muted" style={{ fontSize: 12 }}>@{u.username}</span>
                   </td>
                   <td onClick={() => loadLedger(u.id)} className="num" style={{ fontSize: 13, cursor: 'pointer' }}>
-                    {u.holdings.length ? u.holdings.map((h) => `${Number(h.balance).toLocaleString()} ${h.coin}`).join(', ') : '—'}
+                    {u.holdings.length ? u.holdings.map((h) => `${fmtCoin(h.balance)} ${h.coin}`).join(', ') : '—'}
                   </td>
                   <td>
                     <button
@@ -448,7 +456,7 @@ export default function AdminPanel({ adminUsername }) {
                     <tr key={l.id}>
                       <td><span className={`pill pill-${l.type}`}>{l.type}</span></td>
                       <td>{l.coin}</td>
-                      <td className="num">{Number(l.amount).toLocaleString()}</td>
+                      <td className="num">{fmtCoin(l.amount)}</td>
                       <td className="muted">{l.created_by}</td>
                       <td className="muted">{new Date(l.created_at).toLocaleDateString()}</td>
                     </tr>
