@@ -51,6 +51,7 @@ export default function Dashboard({ username }) {
   const [convertFrom, setConvertFrom] = useState(null);
   const [convertTo, setConvertTo] = useState(null);
   const [convertAmount, setConvertAmount] = useState('');
+  const [convertUnit, setConvertUnit] = useState('usd'); // coin | usd
   const [convertBusy, setConvertBusy] = useState(false);
   const [convertError, setConvertError] = useState('');
   const [convertSuccess, setConvertSuccess] = useState(null);
@@ -265,6 +266,7 @@ export default function Dashboard({ username }) {
     setConvertFrom(null);
     setConvertTo(null);
     setConvertAmount('');
+    setConvertUnit('usd');
     setConvertError('');
   }
 
@@ -286,12 +288,29 @@ export default function Dashboard({ username }) {
   async function submitConvert(e) {
     e.preventDefault();
     setConvertError('');
+
+    const fromPrice = prices?.[BY_SYMBOL[convertFrom]?.id]?.usd;
+    let coinAmount;
+    if (convertUnit === 'usd') {
+      if (!fromPrice) {
+        setConvertError('Live price unavailable right now — try again in a moment, or switch to entering the coin amount directly.');
+        return;
+      }
+      coinAmount = Number(convertAmount) / fromPrice;
+    } else {
+      coinAmount = Number(convertAmount);
+    }
+    if (!(coinAmount > 0)) {
+      setConvertError('Enter a valid amount');
+      return;
+    }
+
     setConvertBusy(true);
     try {
       const res = await fetch('/api/convert', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from_coin: convertFrom, to_coin: convertTo, amount: convertAmount }),
+        body: JSON.stringify({ from_coin: convertFrom, to_coin: convertTo, amount: coinAmount }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -643,30 +662,69 @@ export default function Dashboard({ username }) {
           const fromPrice = prices?.[BY_SYMBOL[convertFrom]?.id]?.usd;
           const toPrice = prices?.[BY_SYMBOL[convertTo]?.id]?.usd;
           const numeric = Number(convertAmount);
-          const estimate = fromPrice && toPrice && numeric > 0 ? (numeric * fromPrice) / toPrice : null;
+          const fromCoinAmount = convertUnit === 'usd'
+            ? (fromPrice && numeric > 0 ? numeric / fromPrice : null)
+            : (numeric > 0 ? numeric : null);
+          const usdEquivalent = convertUnit === 'usd' ? (numeric > 0 ? numeric : null) : (fromPrice && numeric > 0 ? numeric * fromPrice : null);
+          const estimate = usdEquivalent && toPrice ? usdEquivalent / toPrice : null;
           return (
             <div style={{ marginTop: 14, padding: 14, background: 'var(--bg-soft)', borderRadius: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <span style={{ fontSize: 13, fontWeight: 600 }}>{convertFrom} → {convertTo}</span>
                 <button className="btn btn-ghost" onClick={backConvertStep}>← Back</button>
               </div>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{
+                    fontSize: 12, padding: '6px 12px',
+                    background: convertUnit === 'usd' ? 'var(--accent)' : 'var(--bg)',
+                    color: convertUnit === 'usd' ? '#fff' : 'var(--text)',
+                    border: '1px solid var(--border)',
+                  }}
+                  onClick={() => { setConvertUnit('usd'); setConvertAmount(''); }}
+                >
+                  USD
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{
+                    fontSize: 12, padding: '6px 12px',
+                    background: convertUnit === 'coin' ? 'var(--accent)' : 'var(--bg)',
+                    color: convertUnit === 'coin' ? '#fff' : 'var(--text)',
+                    border: '1px solid var(--border)',
+                  }}
+                  onClick={() => { setConvertUnit('coin'); setConvertAmount(''); }}
+                >
+                  {convertFrom}
+                </button>
+              </div>
               <form onSubmit={submitConvert}>
                 <div className="field">
-                  <label>Amount ({convertFrom}) — {fmtCoin(available)} available</label>
+                  <label>
+                    {convertUnit === 'usd' ? 'Amount in USD' : `Amount (${convertFrom})`} — {fmtCoin(available)} {convertFrom} available
+                  </label>
                   <input
                     type="number"
                     step="any"
                     min="0"
-                    max={available}
+                    max={convertUnit === 'coin' ? available : undefined}
                     value={convertAmount}
                     onChange={(e) => setConvertAmount(e.target.value)}
                     required
                   />
                 </div>
+                {convertUnit === 'usd' && fromCoinAmount !== null && (
+                  <p className="muted num" style={{ fontSize: 13, marginTop: -8, marginBottom: 4 }}>
+                    ≈ {fmtCoin(fromCoinAmount)} {convertFrom}
+                  </p>
+                )}
                 {estimate !== null && (
                   <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>
                     ≈ <span className="num" style={{ fontWeight: 700, color: 'var(--text)' }}>
-                      {estimate.toLocaleString(undefined, { maximumFractionDigits: 8 })}
+                      {fmtCoin(estimate)}
                     </span> {convertTo} at the current rate
                   </p>
                 )}
