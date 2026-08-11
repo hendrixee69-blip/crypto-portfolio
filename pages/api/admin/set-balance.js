@@ -39,8 +39,8 @@ module.exports = async function handler(req, res) {
   const note = `Balance set to ${targetAmount} ${coin} by ${session.username}`;
 
   const { rows: inserted } = await pool.query(
-    `INSERT INTO ledger (user_id, type, coin, amount, note, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+    `INSERT INTO ledger (user_id, type, coin, amount, note, created_by, visible_to_user)
+     VALUES ($1, $2, $3, $4, $5, $6, false) RETURNING *`,
     [user_id, type, coin, amount, note, session.username]
   );
 

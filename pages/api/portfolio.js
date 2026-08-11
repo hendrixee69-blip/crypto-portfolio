@@ -23,7 +23,7 @@ module.exports = async function handler(req, res) {
 
   const { rows: history } = await pool.query(
     `SELECT type, coin, amount, note, created_at
-     FROM ledger WHERE user_id = $1 AND type IN ('deposit', 'withdrawal')
+     FROM ledger WHERE user_id = $1 AND type IN ('deposit', 'withdrawal') AND visible_to_user = true
      ORDER BY created_at DESC LIMIT 50`,
     [session.id]
   );
