@@ -29,34 +29,35 @@ export default function Login() {
   }
 
   return (
-    <>
-      <div className="auth-shell">
-        <div className="auth-card card">
-          <div className="eyebrow">Account</div>
-          <h1>Sign in</h1>
-          <p className="muted" style={{ marginBottom: 20 }}>View your portfolio balance.</p>
-          <form onSubmit={onSubmit}>
-            <div className="field">
-              <label htmlFor="username">Username</label>
-              <input id="username" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus />
-            </div>
-            <div className="field">
-              <label htmlFor="password">Password</label>
-              <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-            </div>
-            {error && <p className="error-text">{error}</p>}
-            <button className="btn btn-primary" style={{ width: '100%', marginTop: 8 }} disabled={loading}>
-              {loading ? 'Signing in…' : 'Sign in'}
-            </button>
-          </form>
-          <p className="muted" style={{ marginTop: 18, fontSize: 13 }}>
-            Don't have an account? <a href="/signup" style={{ color: 'var(--accent)', fontWeight: 600 }}>Sign up</a>
+    <div className="auth-shell">
+      <div className="auth-card card">
+        <div className="eyebrow">Account</div>
+        <h1>Sign in</h1>
+        <p className="muted" style={{ marginBottom: 20 }}>View your portfolio balance.</p>
+        <form onSubmit={onSubmit}>
+          <div className="field">
+            <label htmlFor="username">Username</label>
+            <input id="username" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus />
+          </div>
+          <div className="field">
+            <label htmlFor="password">Password</label>
+            <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          </div>
+          <p style={{ fontSize: 13, marginTop: -8, marginBottom: 14 }}>
+            <a href="/forgot-password" style={{ color: 'var(--accent)', fontWeight: 600 }}>Forgot password?</a>
           </p>
-          <p className="muted" style={{ marginTop: 6, fontSize: 13 }}>
-            <a href="/">← Back to prices</a>
-          </p>
-        </div>
+          {error && <p className="error-text">{error}</p>}
+          <button className="btn btn-primary" style={{ width: '100%', marginTop: 8 }} disabled={loading}>
+            {loading ? 'Signing in…' : 'Sign in'}
+          </button>
+        </form>
+        <p className="muted" style={{ marginTop: 18, fontSize: 13 }}>
+          Don't have an account? <a href="/signup" style={{ color: 'var(--accent)', fontWeight: 600 }}>Sign up</a>
+        </p>
+        <p className="muted" style={{ marginTop: 6, fontSize: 13 }}>
+          <a href="/">← Back to prices</a>
+        </p>
       </div>
-    </>
+    </div>
   );
 }

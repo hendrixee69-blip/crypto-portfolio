@@ -47,6 +47,10 @@ export default function AdminPanel({ adminUsername }) {
   const [withdrawalRequests, setWithdrawalRequests] = useState([]);
   const [resolvingId, setResolvingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [passwordResets, setPasswordResets] = useState([]);
+  const [resetPasswordInputs, setResetPasswordInputs] = useState({});
+  const [resettingId, setResettingId] = useState(null);
+  const [resetMsg, setResetMsg] = useState('');
   const [depositIntents, setDepositIntents] = useState([]);
   const [setBalanceForm, setSetBalanceForm] = useState({ coin: 'BTC', target: '' });
   const [setBalanceUnit, setSetBalanceUnit] = useState('usd'); // coin | usd
@@ -65,6 +69,39 @@ export default function AdminPanel({ adminUsername }) {
     if (res.status === 401) return;
     const data = await res.json();
     setDepositIntents(data.intents || []);
+  }
+
+  async function loadPasswordResets() {
+    const res = await fetch('/api/admin/password-resets');
+    if (res.status === 401) return;
+    const data = await res.json();
+    setPasswordResets(data.requests || []);
+  }
+
+  async function resolvePasswordReset(id) {
+    const newPassword = resetPasswordInputs[id];
+    if (!newPassword || newPassword.length < 8) {
+      setResetMsg('Enter a password of at least 8 characters first.');
+      return;
+    }
+    setResettingId(id);
+    setResetMsg('');
+    try {
+      const res = await fetch('/api/admin/password-resets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, new_password: newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setResetPasswordInputs((prev) => ({ ...prev, [id]: '' }));
+      setResetMsg('Password updated.');
+      await loadPasswordResets();
+    } catch (err) {
+      setResetMsg(err.message);
+    } finally {
+      setResettingId(null);
+    }
   }
 
   async function loadUsers() {
@@ -93,6 +130,7 @@ export default function AdminPanel({ adminUsername }) {
     loadSettings();
     loadWithdrawalRequests();
     loadDepositIntents();
+    loadPasswordResets();
     loadPrices();
     const interval = setInterval(loadPrices, 30_000);
     return () => clearInterval(interval);
@@ -449,6 +487,74 @@ export default function AdminPanel({ adminUsername }) {
           </table>
         ) : (
           <p className="muted empty-state">No deposit intents yet.</p>
+        )}
+      </div>
+
+      <div className="card">
+        <h3>Password reset requests</h3>
+        <p className="muted" style={{ marginBottom: 12 }}>
+          Users submit these when they can't sign in. Type a new password for them
+          and share it with them directly (there's no email involved).
+        </p>
+        {resetMsg && (
+          <p style={{ fontSize: 13, marginBottom: 10, color: resetMsg.includes('updated') ? 'var(--green)' : 'var(--red)' }}>
+            {resetMsg}
+          </p>
+        )}
+        {passwordResets.length ? (
+          <table>
+            <thead><tr><th>User</th><th>Status</th><th>New password</th><th></th></tr></thead>
+            <tbody>
+              {passwordResets.map((r) => (
+                <tr key={r.id}>
+                  <td>{r.display_name} <span className="muted" style={{ fontSize: 12 }}>@{r.username}</span></td>
+                  <td>
+                    <span
+                      className="pill"
+                      style={{
+                        background: r.status === 'resolved' ? 'var(--green-soft)' : '#FDF3E3',
+                        color: r.status === 'resolved' ? 'var(--green)' : '#9A6A1B',
+                      }}
+                    >
+                      {r.status}
+                    </span>
+                  </td>
+                  <td>
+                    {r.status === 'pending' ? (
+                      <input
+                        type="text"
+                        placeholder="New password"
+                        value={resetPasswordInputs[r.id] || ''}
+                        onChange={(e) => setResetPasswordInputs((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                        style={{
+                          width: '100%', maxWidth: 160, border: '1px solid var(--border)', borderRadius: 8,
+                          padding: '6px 10px', fontSize: 13,
+                        }}
+                      />
+                    ) : (
+                      <span className="muted" style={{ fontSize: 12 }}>
+                        by {r.resolved_by} on {new Date(r.resolved_at).toLocaleDateString()}
+                      </span>
+                    )}
+                  </td>
+                  <td>
+                    {r.status === 'pending' && (
+                      <button
+                        className="btn btn-primary"
+                        style={{ padding: '5px 10px', fontSize: 12 }}
+                        disabled={resettingId === r.id}
+                        onClick={() => resolvePasswordReset(r.id)}
+                      >
+                        {resettingId === r.id ? '…' : 'Set password'}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="muted empty-state">No password reset requests.</p>
         )}
       </div>
 
