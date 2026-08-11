@@ -7,8 +7,6 @@ module.exports = async function handler(req, res) {
   const session = requireRole(req, 'user');
   if (!session) return res.status(401).json({ error: 'Not authenticated' });
 
-  // Deposits add, withdrawals subtract, adjustments can go either way (positive/negative amount
-  // is enforced at insert time by using type to decide sign here).
   const { rows } = await pool.query(
     `SELECT coin,
             SUM(CASE WHEN type = 'deposit' THEN amount
@@ -25,7 +23,7 @@ module.exports = async function handler(req, res) {
 
   const { rows: history } = await pool.query(
     `SELECT type, coin, amount, note, created_at
-     FROM ledger WHERE user_id = $1
+     FROM ledger WHERE user_id = $1 AND type IN ('deposit', 'withdrawal')
      ORDER BY created_at DESC LIMIT 50`,
     [session.id]
   );
